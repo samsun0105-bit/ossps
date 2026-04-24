@@ -349,7 +349,7 @@
         </aside>
 
         <!-- 右側主要區域 -->
-        <main class="relative overflow-y-auto p-8 no-scrollbar flex flex-col bg-slate-900">
+        <main class="relative overflow-auto p-8 flex flex-col bg-slate-900">
             <!-- 浮動動作列 -->
             <div class="no-print sticky top-0 mb-8 z-[60] flex justify-between items-center">
                 <div id="status-tag" class="bg-slate-800/90 backdrop-blur px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-300">
@@ -1032,20 +1032,50 @@ steps 必須是 array，每一筆包含 step, desc, danger, safety, emergency。
             reader.readAsText(file);
         }
 
-        async function downloadPDF() {
-            if (document.getElementById('file-preview-overlay').style.display === 'block') {
-                return showToast("此為外部檔案，請使用該檔案內建功能下載", "error");
-            }
-            const element = document.getElementById('report-preview');
-            const canvas = await html2canvas(element, { scale: 2 });
-            const imgData = canvas.toDataURL('image/png');
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const w = pdf.internal.pageSize.getWidth();
-            const h = (canvas.height * w) / canvas.width;
-            pdf.addImage(imgData, 'PNG', 0, 0, w, h);
-            pdf.save(`OSSPIS_REPORT_${document.getElementById('field-name').innerText}.pdf`);
-        }
+async function downloadPDF() {
+    if (document.getElementById('file-preview-overlay').style.display === 'block') {
+        return showToast("此為外部檔案，請使用該檔案內建功能下載", "error");
+    }
+
+    const element = document.getElementById('report-preview');
+
+    const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+
+    const pdf = new jsPDF('p', 'mm', 'a4');
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+    }
+
+    const fileName = document.getElementById('field-name').innerText || 'REPORT';
+    pdf.save(`OSSPIS_REPORT_${fileName}.pdf`);
+}
 
         function showToast(msg, type = "success") {
             const t = document.getElementById('toast');
