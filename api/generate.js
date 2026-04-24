@@ -4,11 +4,38 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { query, systemPrompt } = req.body;
+    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+
+    const query = body.query || "";
+    const systemPrompt = body.systemPrompt || "你是一位專業的職業安全衛生管理師。";
 
     if (!query) {
-      return res.status(400).json({ error: "缺少 query" });
+      return res.status(400).json({ error: "缺少 query", receivedBody: body });
     }
+
+    const prompt = `${systemPrompt}
+
+請根據以下作業名稱產生安全衛生作業標準程序。
+作業名稱：${query}
+
+請只輸出純 JSON，不要 markdown，不要說明文字。
+JSON 格式：
+{
+  "type": "",
+  "method": "",
+  "name": "",
+  "tools": "",
+  "protective": "",
+  "steps": [
+    {
+      "step": "",
+      "desc": "",
+      "danger": "",
+      "safety": "",
+      "emergency": ""
+    }
+  ]
+}`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
@@ -20,17 +47,13 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           contents: [
             {
-              role: "user",
               parts: [
                 {
-                  text: `${systemPrompt}\n\n請處理以下作業：${query}`
+                  text: prompt
                 }
               ]
             }
-          ],
-          generationConfig: {
-            responseMimeType: "application/json"
-          }
+          ]
         })
       }
     );
@@ -38,7 +61,7 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("Gemini API Error:", data);
+      console.error("Gemini API Error:", JSON.stringify(data, null, 2));
       return res.status(response.status).json(data);
     }
 
