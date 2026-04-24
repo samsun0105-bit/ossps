@@ -71,19 +71,33 @@ JSON 格式如下：
       }
     };
 
-const response = await fetch(
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
+const models = ["gemini-2.0-flash", "gemini-2.5-flash"];
+
+let response;
+let data;
+
+for (const model of models) {
+  response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    }
+  );
+
+  data = await response.json();
+
+  if (response.ok) {
+    break;
   }
-);
 
-    const data = await response.json();
-
+  if (response.status !== 503 && response.status !== 429) {
+    break;
+  }
+}
     if (!response.ok) {
       console.error("Gemini API Error:", JSON.stringify(data, null, 2));
       return res.status(response.status).json({
