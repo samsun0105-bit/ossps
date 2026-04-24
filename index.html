@@ -36,14 +36,37 @@
             background: #64748b;
         }
 
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar {
+    width: 8px;
+}
 
-        .report-table th, .report-table td {
-            border: 1px solid #1e293b;
-            padding: 12px;
-            vertical-align: top;
-        }
+.no-scrollbar::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+
+.no-scrollbar::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 10px;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: auto;
+    scrollbar-width: thin;
+}
+
+.report-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.report-table th, .report-table td {
+    border: 1px solid #1e293b;
+    padding: 10px;
+    vertical-align: top;
+    word-break: break-word;
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
 
         .report-table th {
             background-color: #f8fafc;
@@ -62,19 +85,35 @@
             cursor: text;
         }
 
-        .a4-container {
-            width: 210mm;
-            min-height: 297mm;
-            padding: 20mm;
-            margin: auto;
-            background: white;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-            color: #1e293b;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
+.a4-container {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 16mm;
+    margin: auto;
+    background: white;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    color: #1e293b;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: visible;
+}
+#report-preview {
+    margin-bottom: 80px;
+}
 
+#steps-body td {
+    font-size: 11px;
+}
+
+.report-table {
+    page-break-inside: auto;
+}
+
+.report-table tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+}
         @media print {
             .no-print { display: none !important; }
             body { background: white; padding: 0; }
