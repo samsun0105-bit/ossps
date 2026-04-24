@@ -64,8 +64,8 @@
 
 .a4-container {
     width: 210mm;
-    min-height: 297mm;
-    height: auto;
+    height: calc(100vh - 170px);
+    min-height: 600px;
     padding: 20mm;
     margin: 0 auto 80px auto;
     background: white;
@@ -73,14 +73,14 @@
     color: #1e293b;
     display: block;
     position: relative;
-    overflow: visible;
+    overflow: auto;
+    box-sizing: border-box;
 }
 
 #report-content-wrapper {
-    background: white;
+    min-width: 170mm;
     min-height: 297mm;
-    height: auto;
-    overflow: visible;
+    background: white;
 }
 
 @page {
@@ -357,7 +357,7 @@
         </aside>
 
         <!-- 右側主要區域 -->
-        <main class="relative overflow-auto p-8 flex flex-col bg-slate-900">
+        <main class="relative overflow-hidden p-8 flex flex-col bg-slate-900">
             <!-- 浮動動作列 -->
             <div class="no-print sticky top-0 mb-8 z-[60] flex justify-between items-center">
                 <div id="status-tag" class="bg-slate-800/90 backdrop-blur px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-300">
@@ -1045,87 +1045,140 @@ async function downloadPDF() {
         return showToast("此為外部檔案，請使用該檔案內建功能下載", "error");
     }
 
-    const element = document.getElementById('report-preview');
-
-    const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
-        height: element.scrollHeight
-    });
-
     const { jsPDF } = window.jspdf;
+
+    const companyName = document.getElementById('company-name').innerText;
+    const reportTitle = document.getElementById('report-main-title').innerText;
+    const fileName = document.getElementById('field-name').innerText || 'REPORT';
+
+    const tables = document.querySelectorAll('#report-content-wrapper .report-table');
+    const infoTable = tables[0];
+    const stepsTable = tables[1];
+    const stepRows = Array.from(document.querySelectorAll('#steps-body tr'));
+
+    const footerDept = document.getElementById('footer-dept').innerText;
+    const footerAuthor = document.getElementById('footer-author').innerText;
+    const footerDate = document.getElementById('footer-date').innerText;
+
     const pdf = new jsPDF('p', 'mm', 'a4');
+
+    const stage = document.createElement('div');
+    stage.style.position = 'fixed';
+    stage.style.left = '-99999px';
+    stage.style.top = '0';
+    stage.style.width = '210mm';
+    stage.style.background = 'white';
+    document.body.appendChild(stage);
+
+    function removeIds(node) {
+        if (node.removeAttribute) node.removeAttribute('id');
+        Array.from(node.children || []).forEach(removeIds);
+    }
+
+    function createPage(includeInfoTable) {
+        const page = document.createElement('div');
+        page.className = 'pdf-export-page';
+        page.style.width = '210mm';
+        page.style.height = '297mm';
+        page.style.padding = '14mm';
+        page.style.boxSizing = 'border-box';
+        page.style.background = 'white';
+        page.style.color = '#000';
+        page.style.display = 'flex';
+        page.style.flexDirection = 'column';
+        page.style.fontFamily = "'Noto Sans TC', sans-serif";
+
+        page.innerHTML = `
+            <div style="text-align:center;">
+                <div style="font-size:18px;font-weight:700;margin-bottom:8px;">${companyName}</div>
+                <div style="border-top:3px solid #000;margin-bottom:10px;"></div>
+                <div style="font-size:16px;font-weight:700;letter-spacing:0.18em;margin-bottom:12px;">${reportTitle}</div>
+            </div>
+            <div class="pdf-page-content" style="flex:1;overflow:hidden;"></div>
+            <div class="pdf-page-footer" style="border-top:2px solid #000;padding-top:8px;font-size:10px;display:grid;grid-template-columns:1fr 1fr 1fr;color:#000;">
+                <div>管理單位： ${footerDept}</div>
+                <div style="text-align:center;">製表人： ${footerAuthor}</div>
+                <div style="text-align:right;">發行日期： ${footerDate}</div>
+            </div>
+            <div class="pdf-page-number" style="font-size:9px;text-align:center;margin-top:4px;color:#000;"></div>
+        `;
+
+        const content = page.querySelector('.pdf-page-content');
+
+        if (includeInfoTable && infoTable) {
+            const clonedInfo = infoTable.cloneNode(true);
+            removeIds(clonedInfo);
+            clonedInfo.style.marginBottom = '8mm';
+            content.appendChild(clonedInfo);
+        }
+
+        const newStepsTable = document.createElement('table');
+        newStepsTable.className = 'report-table';
+        newStepsTable.style.width = '100%';
+        newStepsTable.style.tableLayout = 'fixed';
+        newStepsTable.style.borderCollapse = 'collapse';
+
+        const thead = stepsTable.querySelector('thead').cloneNode(true);
+        removeIds(thead);
+        newStepsTable.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        newStepsTable.appendChild(tbody);
+
+        content.appendChild(newStepsTable);
+        stage.appendChild(page);
+
+        return { page, tbody };
+    }
+
+    const pages = [];
+    let current = createPage(true);
+    pages.push(current.page);
+
+    for (const row of stepRows) {
+        const clonedRow = row.cloneNode(true);
+        removeIds(clonedRow);
+        current.tbody.appendChild(clonedRow);
+
+        if (current.page.scrollHeight > current.page.clientHeight) {
+            current.tbody.removeChild(clonedRow);
+
+            current = createPage(false);
+            pages.push(current.page);
+
+            current.tbody.appendChild(clonedRow);
+
+            if (current.page.scrollHeight > current.page.clientHeight) {
+                // 如果單一列本身太高，就允許它留在該頁，避免無限分頁
+            }
+        }
+    }
+
+    const totalPages = pages.length;
+
+    pages.forEach((page, index) => {
+        page.querySelector('.pdf-page-number').innerText = `第 ${index + 1} 頁 / 共 ${totalPages} 頁`;
+    });
 
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
 
-    const pageCanvasHeight = Math.floor(canvas.width * (pageHeight / pageWidth));
+    for (let i = 0; i < pages.length; i++) {
+        const canvas = await html2canvas(pages[i], {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff'
+        });
 
-    const elementRect = element.getBoundingClientRect();
-    const rowBreaks = Array.from(document.querySelectorAll('#steps-body tr'))
-        .map(row => {
-            const rowRect = row.getBoundingClientRect();
-            return Math.floor((rowRect.bottom - elementRect.top) * 2);
-        })
-        .filter(y => y > 0 && y < canvas.height);
+        const imgData = canvas.toDataURL('image/png');
 
-    let sourceY = 0;
-    let pageIndex = 0;
+        if (i > 0) pdf.addPage();
 
-    while (sourceY < canvas.height) {
-        let targetY = Math.min(sourceY + pageCanvasHeight, canvas.height);
-
-        if (targetY < canvas.height) {
-            const safeBreaks = rowBreaks.filter(y => y > sourceY + 120 && y <= targetY - 40);
-            if (safeBreaks.length > 0) {
-                targetY = safeBreaks[safeBreaks.length - 1];
-            }
-        }
-
-        if (targetY <= sourceY) {
-            targetY = Math.min(sourceY + pageCanvasHeight, canvas.height);
-        }
-
-        const sliceHeight = targetY - sourceY;
-
-        const pageCanvas = document.createElement('canvas');
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = sliceHeight;
-
-        const ctx = pageCanvas.getContext('2d');
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-        ctx.drawImage(
-            canvas,
-            0,
-            sourceY,
-            canvas.width,
-            sliceHeight,
-            0,
-            0,
-            canvas.width,
-            sliceHeight
-        );
-
-        const imgData = pageCanvas.toDataURL('image/png');
-        const imgHeight = (sliceHeight * pageWidth) / canvas.width;
-
-        if (pageIndex > 0) {
-            pdf.addPage();
-        }
-
-        pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, imgHeight);
-
-        sourceY = targetY;
-        pageIndex++;
+        pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
     }
 
-    const fileName = document.getElementById('field-name').innerText || 'REPORT';
+    document.body.removeChild(stage);
+
     pdf.save(`OSSPIS_REPORT_${fileName}.pdf`);
 }
 
