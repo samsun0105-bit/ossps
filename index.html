@@ -666,20 +666,29 @@
 
 async function generateAIReport() {
     const query = document.getElementById('search-input').value.trim();
-    if (!query) return showToast("請輸入欲生成的作業名稱", "error");
+
+    if (!query) {
+        return showToast("請輸入欲生成的作業名稱", "error");
+    }
 
     document.getElementById('loading-text').innerText = "AI 正在撰寫安全作業標準...";
     document.getElementById('loading').classList.remove('hidden');
 
-    const systemPrompt = `你是一位專業的職業安全衛生管理師。請根據作業名稱產生完整的安全衛生作業標準程序。輸出格式為 JSON，包含 type, method, name, tools, protective, steps。steps 必須是 array，格式為 {step, desc, danger, safety, emergency}。請只輸出 JSON，不要加 markdown。`;
+    const systemPrompt = `你是一位專業的職業安全衛生管理師。
+請根據使用者輸入的作業名稱，產生完整的安全衛生作業標準程序。
+請務必輸出純 JSON，不要 markdown，不要說明文字。
+JSON 必須包含 type, method, name, tools, protective, steps。
+steps 必須是 array，每一筆包含 step, desc, danger, safety, emergency。`;
 
     try {
         const response = await fetch("/api/generate", {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify({
-                query: query,
-                systemPrompt: systemPrompt
+                query,
+                systemPrompt
             })
         });
 
@@ -687,7 +696,7 @@ async function generateAIReport() {
 
         if (!response.ok) {
             console.error("API 錯誤：", data);
-            throw new Error(data.error?.message || "API 呼叫失敗");
+            throw new Error(data.error?.message || data.error || "API 呼叫失敗");
         }
 
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -712,38 +721,13 @@ async function generateAIReport() {
 
     } catch (error) {
         console.error("生成錯誤：", error);
-        showToast("生成過程發生錯誤", "error");
+        showToast("生成過程發生錯誤：" + error.message, "error");
     } finally {
         document.getElementById('loading').classList.add('hidden');
     }
-}
-const response = await fetch("/api/generate", {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-        query: query,
-        systemPrompt: systemPrompt
-    })
-});
-const data = await response.json();
 
-if (!response.ok) {
-    console.error("API 錯誤：", data);
-    throw new Error(data.error?.message || "API 呼叫失敗");
-}
+    } // ← 關閉 generateAIReport
 
-const result = JSON.parse(data.candidates[0].content.parts[0].text);
-                currentLoadedReportId = null;
-                updateSaveBtnText();
-                renderReport(result);
-                setCurrentDate();
-                showToast("AI 報告生成完成");
-            } catch (error) {
-                showToast("生成過程發生錯誤", "error");
-            } finally {
-                document.getElementById('loading').classList.add('hidden');
-            }
-        }
 
         function renderReport(data) {
             // 切換視圖
