@@ -1,1002 +1,116 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>職業安全標準程序智慧系統</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Noto+Sans+TC:wght@300;400;700&display=swap');
-        
-        :root {
-            --primary: #2563eb;
-            --admin-accent: #f59e0b;
-        }
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
-        body {
-            font-family: 'Inter', 'Noto Sans TC', sans-serif;
-            background-color: #0f172a;
-            color: #e2e8f0;
-        }
+  try {
+    const body =
+      typeof req.body === "string"
+        ? JSON.parse(req.body || "{}")
+        : req.body || {};
 
-        /* 自定義左側滾動條樣式 */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #1e293b;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #475569;
-            border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
-        }
+    const query = String(body.query || "").trim();
 
-.no-scrollbar::-webkit-scrollbar {
-    width: 8px;
-}
+    const systemPrompt = String(
+      body.systemPrompt || "你是一位專業的職業安全衛生管理師。"
+    ).trim();
 
-.no-scrollbar::-webkit-scrollbar-track {
-    background: #0f172a;
-}
-
-.no-scrollbar::-webkit-scrollbar-thumb {
-    background: #475569;
-    border-radius: 10px;
-}
-
-.no-scrollbar {
-    -ms-overflow-style: auto;
-    scrollbar-width: thin;
-}
-
-.report-table {
-    table-layout: fixed;
-    width: 100%;
-}
-
-.report-table th, .report-table td {
-    border: 1px solid #1e293b;
-    padding: 10px;
-    vertical-align: top;
-    word-break: break-word;
-    white-space: pre-wrap;
-    line-height: 1.6;
-}
-
-        .report-table th {
-            background-color: #f8fafc;
-            color: #1e293b;
-            font-weight: 700;
-        }
-
-        .report-table td {
-            color: #334155;
-        }
-
-        .editable-field.admin-edit-mode {
-            background-color: #fffbeb;
-            border: 1px dashed #f59e0b !important;
-            color: #92400e !important;
-            cursor: text;
-        }
-
-.a4-container {
-    width: 210mm;
-    min-height: 297mm;
-    padding: 16mm;
-    margin: auto;
-    background: white;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-    color: #1e293b;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    overflow: visible;
-}
-#report-preview {
-    margin-bottom: 80px;
-}
-
-#steps-body td {
-    font-size: 11px;
-}
-
-.report-table {
-    page-break-inside: auto;
-}
-
-.report-table tr {
-    page-break-inside: avoid;
-    page-break-after: auto;
-}
-        @media print {
-            .no-print { display: none !important; }
-            body { background: white; padding: 0; }
-            .a4-container { box-shadow: none; margin: 0; width: 100%; padding: 10mm; min-height: auto; }
-            .main-layout { display: block; }
-        }
-
-        .main-layout {
-            display: grid;
-            grid-template-columns: 350px 1fr;
-            height: 100vh;
-        }
-
-        .sidebar {
-            background-color: #1e293b;
-            border-right: 1px solid #334155;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-
-        .logo-pulse {
-            animation: pulse-blue 2s infinite;
-        }
-        @keyframes pulse-blue {
-            0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
-        }
-        
-        @keyframes spin-slow {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        /* 拖放區域樣式 */
-        .drop-zone.drag-over {
-            background-color: rgba(37, 99, 235, 0.1);
-            border: 2px dashed #3b82f6;
-        }
-        
-        #file-preview-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: white;
-            z-index: 50;
-            display: none;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="main-layout">
-        <!-- 左側導覽面板 -->
-        <aside class="sidebar no-print">
-            <!-- 固定頭部 -->
-            <div class="p-6 pb-4">
-                <div class="flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg logo-pulse flex-shrink-0">
-                        <!-- 修改處：齒輪圖示 (Cog/Gear Icon) 搭配慢速旋轉動畫 -->
-                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="animation: spin-slow 8s linear infinite;">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <h1 class="text-base font-black leading-tight text-blue-400">職業安全標準程序智慧系統</h1>
-                        <p class="text-[9px] text-slate-400 tracking-tight uppercase font-medium">OCCUPATIONAL SAFETY STANDARD PROCEDURE INTELLIGENT SYSTEM</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 可捲動的功能區域 -->
-            <div class="flex-1 overflow-y-auto custom-scrollbar p-6 pt-0">
-                <!-- 搜尋區 -->
-                <div class="space-y-4 mb-8">
-                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">作業搜尋與生成</label>
-                    <div class="relative">
-                        <input type="text" id="search-input" placeholder="輸入作業名稱..." class="w-full bg-slate-800 border border-slate-700 rounded-lg py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-white">
-                        <svg class="w-4 h-4 absolute left-3 top-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    </div>
-                    <button id="ai-generate-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg shadow-lg shadow-blue-900/20 flex items-center justify-center space-x-2 transition transform active:scale-95 text-sm">
-                        <span>✨ AI 自動產出報告</span>
-                    </button>
-                </div>
-
-                <!-- 報告分類 -->
-                <div id="drop-zone" class="space-y-4 mb-8 p-1 rounded-lg transition-all drop-zone">
-                    <div class="flex justify-between items-center">
-                        <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">報告分類項目</label>
-                        <!-- 管理員分類操作按鈕 -->
-                        <div id="category-admin-tools" class="hidden flex space-x-2">
-                            <button onclick="document.getElementById('file-upload-input').click()" class="text-green-400 hover:text-green-300" title="上傳 PDF/Word">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                            </button>
-                            <button onclick="addCategory()" class="text-blue-400 hover:text-blue-300" title="新增分類">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            </button>
-                            <button onclick="editCategory()" class="text-amber-500 hover:text-amber-400" title="修改分類名稱">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                            </button>
-                            <button onclick="removeCategory()" class="text-red-500 hover:text-red-400" title="刪除分類">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            </button>
-                        </div>
-                    </div>
-                    <select id="category-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg py-3 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-white transition cursor-pointer" onchange="updateReportsDropdown()">
-                        <!-- 分類選項將由 JS 動態生成 -->
-                    </select>
-                    <input type="file" id="file-upload-input" class="hidden" accept=".pdf,.doc,.docx" onchange="handleFileUpload(event)">
-                    <div id="drag-hint" class="hidden text-[10px] text-blue-400 text-center animate-pulse">拖放檔案於此處上傳...</div>
-                </div>
-
-                <!-- 已儲存報告清單 -->
-                <div class="space-y-4 mb-8">
-                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">選擇已儲存報告</label>
-                    <div class="flex space-x-2">
-                        <select id="reports-dropdown" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg py-3 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-300 transition cursor-pointer disabled:opacity-50" onchange="handleDropdownSelection()">
-                            <option value="">-- 請先選擇分類 --</option>
-                        </select>
-                        <!-- 管理員專用刪除按鈕 -->
-                        <button id="admin-delete-btn" onclick="deleteSelectedReport()" class="hidden bg-red-900/50 hover:bg-red-700 border border-red-500/50 text-red-200 p-2 rounded-lg transition" title="移除此份報告">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 管理員控制區 -->
-                <div class="pt-6 border-t border-slate-700 space-y-4">
-                    <!-- 登入後顯示的管理資訊 -->
-                    <div id="admin-info" class="hidden flex flex-col space-y-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs text-amber-500 font-bold">管理員模式</span>
-                            <button onclick="toggleAdmin(false)" class="text-[10px] text-amber-200 hover:underline">登出</button>
-                        </div>
-                        <button onclick="toggleModal('password-modal', true)" class="text-[10px] text-slate-400 hover:text-amber-500 text-left transition">更改管理密碼</button>
-                    </div>
-                    
-                    <!-- 管理員登入與資料庫控制 -->
-                    <div id="user-controls" class="space-y-4">
-                        <button id="login-trigger" class="w-full text-left text-sm text-slate-400 hover:text-white flex items-center space-x-2 py-2 transition px-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                            <span>管理員登入</span>
-                        </button>
-                        <div class="grid grid-cols-2 gap-3">
-                            <button onclick="exportDB()" class="text-center text-xs text-slate-400 hover:text-white flex flex-col items-center justify-center space-y-1 py-3 bg-slate-800/50 rounded-lg border border-slate-700/50 transition">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                                <span class="font-semibold">導出數據庫</span>
-                            </button>
-                            <button onclick="document.getElementById('import-file').click()" class="text-center text-xs text-slate-400 hover:text-white flex flex-col items-center justify-center space-y-1 py-3 bg-slate-800/50 rounded-lg border border-slate-700/50 transition">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0L8 8m4 4V4"></path></svg>
-                                <span class="font-semibold">導入數據庫</span>
-                            </button>
-                        </div>
-                        <input type="file" id="import-file" class="hidden" accept=".json" onchange="importDB(event)">
-                    </div>
-                    
-                    <button id="save-report-btn" class="hidden w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center space-x-2 transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                        <span id="save-btn-text">儲存目前報告</span>
-                    </button>
-                </div>
-                
-                <div class="h-8"></div>
-            </div>
-        </aside>
-
-        <!-- 右側主要區域 -->
-        <main class="relative overflow-y-auto p-8 no-scrollbar flex flex-col bg-slate-900">
-            <!-- 浮動動作列 -->
-            <div class="no-print sticky top-0 mb-8 z-[60] flex justify-between items-center">
-                <div id="status-tag" class="bg-slate-800/90 backdrop-blur px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-300">
-                    目前狀態: 預覽模式
-                </div>
-                <div class="flex space-x-3">
-                    <button onclick="downloadPDF()" class="bg-white text-slate-900 px-4 py-2 rounded-lg text-sm font-bold shadow-xl flex items-center space-x-2 hover:bg-slate-100 transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a 1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        <span>PDF</span>
-                    </button>
-                    <button onclick="window.print()" class="bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-xl flex items-center space-x-2 hover:bg-slate-600 transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                        <span>列印</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- A4 報表區 -->
-            <div id="report-preview" class="a4-container">
-                <!-- 檔案預覽圖層 -->
-                <div id="file-preview-overlay">
-                    <iframe id="file-viewer" class="w-full h-full border-none"></iframe>
-                    <div id="word-viewer-fallback" class="hidden flex flex-col items-center justify-center h-full text-slate-600 space-y-4">
-                        <svg class="w-16 h-16 text-blue-500" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM12 18H8v-2h4zm5-4H8v-2h9zm0-4H8V8h9zm1-5l-5 5h5z"/></svg>
-                        <p class="font-bold text-lg">這是 Word 格式檔案，不支援直接在線預覽</p>
-                        <button id="download-word-link" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">下載檔案</button>
-                    </div>
-                </div>
-
-                <div id="report-content-wrapper">
-                    <div class="text-center mb-8">
-                        <h2 class="text-2xl font-bold text-gray-900 outline-none" id="company-name">QNAP 威聯通科技股份有限公司</h2>
-                        <div class="h-1 w-full bg-black my-4"></div>
-                        <h3 class="text-xl font-bold tracking-[0.2em] text-gray-800 outline-none" id="report-main-title">安全衛生作業標準程序報告書</h3>
-                    </div>
-
-                    <table class="report-table w-full text-xs mb-6">
-                        <tr>
-                            <th class="w-1/5">作業種類</th>
-                            <th class="w-1/5">作業方法</th>
-                            <th class="w-1/5">作業名稱</th>
-                            <th class="w-1/5">使用器具</th>
-                            <th class="w-1/5">防護具</th>
-                        </tr>
-                        <tr class="text-center">
-                            <td id="field-type" class="editable-field">--</td>
-                            <td id="field-method" class="editable-field">--</td>
-                            <td id="field-name" class="editable-field font-bold">--</td>
-                            <td id="field-tools" class="editable-field">--</td>
-                            <td id="field-protective" class="editable-field">--</td>
-                        </tr>
-                    </table>
-
-                    <table class="report-table w-full text-xs flex-1">
-                        <thead>
-                            <tr>
-                                <th class="w-[12%]">工作步驟</th>
-                                <th class="w-[28%]">工作方法</th>
-                                <th class="w-[20%]">不安全因素</th>
-                                <th class="w-[20%]">安全措施</th>
-                                <th class="w-[20%]">事故處理</th>
-                            </tr>
-                        </thead>
-                        <tbody id="steps-body">
-                            <tr><td colspan="5" class="text-center py-40 text-gray-300 italic">請在左側搜尋欄位輸入作業名稱開始產出...</td></tr>
-                        </tbody>
-                    </table>
-
-                    <div class="mt-8 border-t-2 border-black pt-4 grid grid-cols-3 text-xs text-gray-700">
-                        <div>
-                            <span class="font-bold">管理單位：</span>
-                            <span id="footer-dept" class="editable-field outline-none">職業安全衛生室</span>
-                        </div>
-                        <div class="text-center">
-                            <span class="font-bold">製表人：</span>
-                            <span id="footer-author" class="editable-field outline-none">Sam Sun</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="font-bold">發行日期：</span>
-                            <span id="footer-date" class="editable-field outline-none"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-8 mb-4 text-center no-print">
-                <p class="text-slate-500 text-[10px] tracking-widest font-light">
-                    © 2026 職業安全衛生室｜職業安全標準程序智慧系統
-                </p>
-                <p class="text-slate-600 text-[9px] mt-1 italic">
-                    Developed by Sam Sun
-                </p>
-            </div>
-        </main>
-    </div>
-
-    <!-- 彈窗 -->
-    <div id="login-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-[100]">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-96 shadow-2xl">
-            <h3 class="text-xl font-bold text-white mb-2">管理員驗證</h3>
-            <p class="text-slate-400 text-sm mb-6">請輸入系統訪問密碼以進入編輯模式</p>
-            <input type="password" id="admin-password" placeholder="••••" 
-                   onkeyup="if(event.key === 'Enter') verifyAdmin()"
-                   class="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white text-center text-2xl tracking-widest outline-none focus:ring-2 focus:ring-blue-500 mb-6">
-            <div class="flex space-x-3">
-                <button onclick="toggleModal('login-modal', false)" class="flex-1 py-3 text-slate-400 font-medium">取消</button>
-                <button onclick="verifyAdmin()" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-900/40 border-none">確認</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="password-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-[100]">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-96 shadow-2xl">
-            <h3 class="text-xl font-bold text-white mb-2">修改管理密碼</h3>
-            <p class="text-slate-400 text-sm mb-4">請輸入舊密碼與新密碼進行修改</p>
-            <div class="space-y-4 mb-6">
-                <input type="password" id="old-password" placeholder="目前密碼" 
-                       class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:ring-2 focus:ring-amber-500">
-                <input type="password" id="new-password" placeholder="新密碼" 
-                       onkeyup="if(event.key === 'Enter') changeAdminPassword()"
-                       class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:ring-2 focus:ring-amber-500">
-            </div>
-            <div class="flex space-x-3">
-                <button onclick="toggleModal('password-modal', false)" class="flex-1 py-2 text-slate-400">取消</button>
-                <button onclick="changeAdminPassword()" class="flex-1 py-2 bg-amber-600 text-white rounded-xl font-bold border-none">確認修改</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="loading" class="hidden fixed inset-0 bg-slate-950/90 flex flex-col items-center justify-center z-[200]">
-        <div class="relative w-24 h-24">
-            <div class="absolute inset-0 border-4 border-blue-500/20 rounded-full"></div>
-            <div class="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-        <p class="mt-8 text-blue-400 font-bold text-lg animate-pulse" id="loading-text">AI 正在撰寫安全作業標準...</p>
-    </div>
-
-    <div id="toast" class="fixed bottom-10 right-10 transform translate-y-20 opacity-0 transition-all duration-300 z-[300] bg-white text-slate-900 px-6 py-3 rounded-xl shadow-2xl font-bold flex items-center space-x-3">
-        <span id="toast-icon" class="text-green-500">✓</span>
-        <span id="toast-msg">操作成功</span>
-    </div>
-
-    <script>
-        const apiKey = "";
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'osspis-pro';
-        let db;
-        let isAdmin = false;
-        let currentAdminPassword = "1068";
-        let currentLoadedReportId = null;
-        
-        // 預設分類
-        let categories = ["機械加工類", "化學品作業類", "電氣工程類", "物流倉儲類", "一般通用類"];
-
-        async function initDB() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open(appId, 2); 
-                request.onupgradeneeded = (e) => {
-                    const db = e.target.result;
-                    if (!db.objectStoreNames.contains('standards')) {
-                        db.createObjectStore('standards', { keyPath: 'id', autoIncrement: true });
-                    }
-                    if (!db.objectStoreNames.contains('settings')) {
-                        db.createObjectStore('settings', { keyPath: 'key' });
-                    }
-                };
-                request.onsuccess = (e) => {
-                    db = e.target.result;
-                    loadSettings().then(() => {
-                        renderCategories();
-                        updateReportsDropdown();
-                        setupDragAndDrop();
-                    });
-                    setCurrentDate();
-                    resolve(db);
-                };
-            });
-        }
-
-        async function loadSettings() {
-            return new Promise((resolve) => {
-                const tx = db.transaction('settings', 'readonly');
-                const store = tx.objectStore('settings');
-                
-                const pwdReq = store.get('adminPassword');
-                pwdReq.onsuccess = () => { if (pwdReq.result) currentAdminPassword = pwdReq.result.value; };
-                
-                const catReq = store.get('categories');
-                catReq.onsuccess = () => { 
-                    if (catReq.result) categories = catReq.result.value;
-                    resolve();
-                };
-            });
-        }
-
-        async function saveCategoriesToDB() {
-            const tx = db.transaction('settings', 'readwrite');
-            tx.objectStore('settings').put({ key: 'categories', value: categories });
-        }
-
-        function renderCategories() {
-            const select = document.getElementById('category-select');
-            const currentValue = select.value;
-            select.innerHTML = '';
-            categories.forEach(cat => {
-                const opt = document.createElement('option');
-                opt.value = cat;
-                opt.textContent = cat;
-                select.appendChild(opt);
-            });
-            if (categories.includes(currentValue)) {
-                select.value = currentValue;
-            }
-        }
-
-        // 拖放功能設置
-        function setupDragAndDrop() {
-            const dropZone = document.getElementById('drop-zone');
-            const dragHint = document.getElementById('drag-hint');
-
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, preventDefaults, false);
-            });
-
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-
-            ['dragenter', 'dragover'].forEach(eventName => {
-                dropZone.addEventListener(eventName, () => {
-                    if(isAdmin) {
-                        dropZone.classList.add('drag-over');
-                        dragHint.classList.remove('hidden');
-                    }
-                }, false);
-            });
-
-            ['dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, () => {
-                    dropZone.classList.remove('drag-over');
-                    dragHint.classList.add('hidden');
-                }, false);
-            });
-
-            dropZone.addEventListener('drop', (e) => {
-                if(!isAdmin) return;
-                const dt = e.dataTransfer;
-                const files = dt.files;
-                if(files.length > 0) {
-                    processFile(files[0]);
-                }
-            }, false);
-        }
-
-        function handleFileUpload(e) {
-            const file = e.target.files[0];
-            if(file) processFile(file);
-        }
-
-        function processFile(file) {
-            const ext = file.name.split('.').pop().toLowerCase();
-            if(!['pdf', 'doc', 'docx'].includes(ext)) {
-                return showToast("僅支援 PDF 或 Word 格式", "error");
-            }
-
-            const reader = new FileReader();
-            document.getElementById('loading-text').innerText = "正在上傳檔案...";
-            document.getElementById('loading').classList.remove('hidden');
-
-            reader.onload = function(e) {
-                const fileData = e.target.result;
-                const report = {
-                    name: file.name,
-                    category: document.getElementById('category-select').value,
-                    timestamp: Date.now(),
-                    isExternalFile: true,
-                    fileType: ext,
-                    fileContent: fileData
-                };
-
-                const tx = db.transaction('standards', 'readwrite');
-                tx.objectStore('standards').add(report);
-                tx.oncomplete = () => {
-                    document.getElementById('loading').classList.add('hidden');
-                    showToast("檔案上傳成功");
-                    updateReportsDropdown();
-                };
-            };
-            reader.readAsDataURL(file);
-        }
-
-        // 分類管理功能
-        function addCategory() {
-            if (!isAdmin) return;
-            const name = prompt("請輸入新分類名稱：");
-            if (name && name.trim()) {
-                if (categories.includes(name.trim())) return showToast("該分類已存在", "error");
-                categories.push(name.trim());
-                saveCategoriesToDB();
-                renderCategories();
-                showToast("分類已新增");
-            }
-        }
-
-        function editCategory() {
-            if (!isAdmin) return;
-            const oldName = document.getElementById('category-select').value;
-            if (!oldName) return;
-            const newName = prompt("請輸入新的分類名稱：", oldName);
-            if (newName && newName.trim() && newName !== oldName) {
-                const index = categories.indexOf(oldName);
-                if (index !== -1) {
-                    categories[index] = newName.trim();
-                    saveCategoriesToDB();
-                    renderCategories();
-                    showToast("分類名稱已修改");
-                }
-            }
-        }
-
-        function removeCategory() {
-            if (!isAdmin) return;
-            const name = document.getElementById('category-select').value;
-            if (!name) return;
-            if (confirm(`確定要刪除「${name}」分類嗎？\n注意：這不會刪除該分類下的報告，但該些報告將暫時無法在選單中被找到。`)) {
-                categories = categories.filter(c => c !== name);
-                saveCategoriesToDB();
-                renderCategories();
-                updateReportsDropdown();
-                showToast("分類已刪除", "error");
-            }
-        }
-
-        function setCurrentDate() {
-            const now = new Date();
-            const dateStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
-            const dateEl = document.getElementById('footer-date');
-            if (dateEl) dateEl.innerText = dateStr;
-        }
-
-        function toggleModal(id, show) {
-            document.getElementById(id).classList.toggle('hidden', !show);
-            if(show && id === 'login-modal') {
-                setTimeout(() => document.getElementById('admin-password').focus(), 100);
-            }
-            if(show && id === 'password-modal') {
-                document.getElementById('old-password').value = "";
-                document.getElementById('new-password').value = "";
-                setTimeout(() => document.getElementById('old-password').focus(), 100);
-            }
-        }
-
-        function verifyAdmin() {
-            const pwd = document.getElementById('admin-password').value;
-            if (pwd === currentAdminPassword) {
-                toggleAdmin(true);
-                toggleModal('login-modal', false);
-            } else {
-                showToast("驗證密碼錯誤", "error");
-            }
-            document.getElementById('admin-password').value = "";
-        }
-
-        async function changeAdminPassword() {
-            const oldPwdInput = document.getElementById('old-password').value;
-            const newPwd = document.getElementById('new-password').value.trim();
-            
-            if (oldPwdInput !== currentAdminPassword) {
-                return showToast("目前密碼不正確", "error");
-            }
-            
-            if (!newPwd) {
-                return showToast("新密碼不可為空", "error");
-            }
-            
-            const tx = db.transaction('settings', 'readwrite');
-            tx.objectStore('settings').put({ key: 'adminPassword', value: newPwd });
-            currentAdminPassword = newPwd;
-            toggleModal('password-modal', false);
-            document.getElementById('old-password').value = "";
-            document.getElementById('new-password').value = "";
-            showToast("密碼修改成功");
-        }
-
-        function toggleAdmin(status) {
-            isAdmin = status;
-            document.getElementById('admin-info').classList.toggle('hidden', !isAdmin);
-            document.getElementById('category-admin-tools').classList.toggle('hidden', !isAdmin);
-            
-            document.getElementById('login-trigger').classList.toggle('hidden', isAdmin);
-            document.getElementById('save-report-btn').classList.toggle('hidden', !isAdmin);
-            document.getElementById('admin-delete-btn').classList.toggle('hidden', !isAdmin);
-            document.getElementById('status-tag').innerText = isAdmin ? "目前狀態: 管理員編輯模式" : "目前狀態: 預覽模式";
-            document.getElementById('status-tag').className = isAdmin 
-                ? "bg-amber-500/20 backdrop-blur px-4 py-2 rounded-full border border-amber-500/50 text-xs text-amber-500 font-bold"
-                : "bg-slate-800/80 backdrop-blur px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-300";
-
-            const editableConfigs = [
-                'company-name', 'report-main-title', 'field-type', 'field-method', 'field-name', 
-                'field-tools', 'field-protective', 'footer-dept', 'footer-author', 'footer-date'
-            ];
-
-            editableConfigs.forEach(id => {
-                const el = document.getElementById(id);
-                if(el) {
-                    el.contentEditable = isAdmin;
-                    el.classList.toggle('admin-edit-mode', isAdmin);
-                }
-            });
-
-            document.querySelectorAll('#steps-body td').forEach(td => {
-                td.contentEditable = isAdmin;
-                td.classList.toggle('admin-edit-mode', isAdmin);
-            });
-            showToast(isAdmin ? "已切換至管理模式" : "已退出管理模式");
-        }
-
-async function generateAIReport() {
-    const query = document.getElementById('search-input').value.trim();
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({
+        error: "缺少 GEMINI_API_KEY，請到 Vercel Environment Variables 設定"
+      });
+    }
 
     if (!query) {
-        return showToast("請輸入欲生成的作業名稱", "error");
+      return res.status(400).json({
+        error: "缺少 query",
+        receivedBody: body
+      });
     }
 
-    document.getElementById('loading-text').innerText = "AI 正在撰寫安全作業標準...";
-    document.getElementById('loading').classList.remove('hidden');
+    const prompt = `${systemPrompt}
 
-    const systemPrompt = `你是一位專業的職業安全衛生管理師。
-請根據使用者輸入的作業名稱，產生完整的安全衛生作業標準程序。
-請務必輸出純 JSON，不要 markdown，不要說明文字。
-JSON 必須包含 type, method, name, tools, protective, steps。
-steps 必須是 array，每一筆包含 step, desc, danger, safety, emergency。`;
+請根據以下作業名稱產生安全衛生作業標準程序。
 
-    try {
-        const response = await fetch("/api/generate", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                query,
-                systemPrompt
-            })
-        });
+作業名稱：${query}
 
-        const data = await response.json();
+請只輸出純 JSON，不要 markdown，不要說明文字。
 
-        if (!response.ok) {
-            console.error("API 錯誤：", data);
-            throw new Error(data.error?.message || data.error || "API 呼叫失敗");
+JSON 格式如下：
+{
+  "type": "作業種類",
+  "method": "作業方法",
+  "name": "作業名稱",
+  "tools": "使用器具",
+  "protective": "防護具",
+  "steps": [
+    {
+      "step": "工作步驟",
+      "desc": "工作方法",
+      "danger": "不安全因素",
+      "safety": "安全措施",
+      "emergency": "事故處理"
+    }
+  ]
+}`;
+
+    const payload = {
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: prompt
+            }
+          ]
         }
+      ],
+      generationConfig: {
+        temperature: 0.4,
+        responseMimeType: "application/json"
+      }
+    };
 
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+const models = ["gemini-2.0-flash", "gemini-2.5-flash"];
 
-        if (!text) {
-            console.error("Gemini 回傳格式異常：", data);
-            throw new Error("Gemini 沒有回傳文字內容");
-        }
+let response;
+let data;
 
-        const cleanText = text
-            .replace(/```json/g, "")
-            .replace(/```/g, "")
-            .trim();
+for (const model of models) {
+  response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    }
+  );
 
-        const result = JSON.parse(cleanText);
+  data = await response.json();
 
-        currentLoadedReportId = null;
-        updateSaveBtnText();
-        renderReport(result);
-        setCurrentDate();
-        showToast("AI 報告生成完成");
+  if (response.ok) {
+    break;
+  }
 
-    } catch (error) {
-        console.error("生成錯誤：", error);
-        showToast("生成過程發生錯誤：" + error.message, "error");
-    } finally {
-        document.getElementById('loading').classList.add('hidden');
+  if (response.status !== 503 && response.status !== 429) {
+    break;
+  }
+}
+    if (!response.ok) {
+      console.error("Gemini API Error:", JSON.stringify(data, null, 2));
+      return res.status(response.status).json({
+        error: data.error || data,
+        sentPayload: payload
+      });
     }
 
-    } // ← 關閉 generateAIReport
-
-
-        function renderReport(data) {
-            // 切換視圖
-            document.getElementById('file-preview-overlay').style.display = 'none';
-            document.getElementById('report-content-wrapper').style.display = 'block';
-
-            document.getElementById('field-type').innerText = data.type || '--';
-            document.getElementById('field-method').innerText = data.method || '--';
-            document.getElementById('field-name').innerText = data.name || '--';
-            document.getElementById('field-tools').innerText = data.tools || '--';
-            document.getElementById('field-protective').innerText = data.protective || '--';
-            if(data.footerDept) document.getElementById('footer-dept').innerText = data.footerDept;
-            if(data.footerAuthor) document.getElementById('footer-author').innerText = data.footerAuthor;
-            if(data.footerDate) document.getElementById('footer-date').innerText = data.footerDate;
-            if(data.company) document.getElementById('company-name').innerText = data.company;
-            if(data.mainTitle) document.getElementById('report-main-title').innerText = data.mainTitle;
-
-            const tbody = document.getElementById('steps-body');
-            tbody.innerHTML = '';
-            const steps = data.steps || [];
-            if (steps.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-40 text-gray-300 italic">請在左側搜尋欄位輸入作業名稱開始產出...</td></tr>';
-                return;
-            }
-            steps.forEach(s => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td contenteditable="${isAdmin}" class="editable-field ${isAdmin?'admin-edit-mode':''}">${s.step}</td>
-                    <td contenteditable="${isAdmin}" class="editable-field ${isAdmin?'admin-edit-mode':''}">${s.desc}</td>
-                    <td contenteditable="${isAdmin}" class="editable-field ${isAdmin?'admin-edit-mode':''}">${s.danger}</td>
-                    <td contenteditable="${isAdmin}" class="editable-field ${isAdmin?'admin-edit-mode':''}">${s.safety}</td>
-                    <td contenteditable="${isAdmin}" class="editable-field ${isAdmin?'admin-edit-mode':''}">${s.emergency}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function renderExternalFile(data) {
-            document.getElementById('report-content-wrapper').style.display = 'none';
-            document.getElementById('file-preview-overlay').style.display = 'block';
-            
-            const viewer = document.getElementById('file-viewer');
-            const wordFallback = document.getElementById('word-viewer-fallback');
-            const downloadBtn = document.getElementById('download-word-link');
-
-            if (data.fileType === 'pdf') {
-                viewer.classList.remove('hidden');
-                wordFallback.classList.add('hidden');
-                viewer.src = data.fileContent;
-            } else {
-                viewer.classList.add('hidden');
-                wordFallback.classList.remove('hidden');
-                downloadBtn.onclick = () => {
-                    const link = document.createElement('a');
-                    link.href = data.fileContent;
-                    link.download = data.name;
-                    link.click();
-                };
-            }
-        }
-
-        async function updateReportsDropdown() {
-            const category = document.getElementById('category-select').value;
-            const dropdown = document.getElementById('reports-dropdown');
-            dropdown.innerHTML = '<option value="">載入中...</option>';
-            const tx = db.transaction('standards', 'readonly');
-            const store = tx.objectStore('standards');
-            const req = store.getAll();
-            req.onsuccess = (e) => {
-                const allItems = e.target.result;
-                const filtered = allItems.filter(item => item.category === category);
-                dropdown.innerHTML = filtered.length === 0 ? '<option value="">此分類尚無報告</option>' : '<option value="">-- 請選擇報告 --</option>';
-                filtered.sort((a, b) => b.timestamp - a.timestamp).forEach(item => {
-                    const opt = document.createElement('option');
-                    opt.value = item.id;
-                    const prefix = item.isExternalFile ? `[${item.fileType.toUpperCase()}] ` : "[程序] ";
-                    opt.textContent = prefix + item.name;
-                    dropdown.appendChild(opt);
-                });
-            };
-        }
-
-        function handleDropdownSelection() {
-            const reportId = document.getElementById('reports-dropdown').value;
-            if (reportId) loadReport(parseInt(reportId));
-        }
-
-        async function loadReport(id) {
-            const tx = db.transaction('standards', 'readonly');
-            const store = tx.objectStore('standards');
-            const req = store.get(id);
-            req.onsuccess = () => {
-                const data = req.result;
-                if (data) {
-                    currentLoadedReportId = data.id;
-                    updateSaveBtnText();
-                    if(data.isExternalFile) {
-                        renderExternalFile(data);
-                    } else {
-                        renderReport(data);
-                    }
-                    showToast("已載入：" + data.name);
-                }
-            };
-        }
-
-        function updateSaveBtnText() {
-            const btnText = document.getElementById('save-btn-text');
-            if(btnText) btnText.innerText = currentLoadedReportId ? "儲存修改內容" : "儲存目前報告";
-        }
-
-        async function saveReport() {
-            if (!isAdmin) return;
-            // 如果當前是外部檔案預覽模式，不支援在此處編輯儲存
-            if (document.getElementById('file-preview-overlay').style.display === 'block') {
-                return showToast("外部檔案不支援在線編輯", "error");
-            }
-
-            const steps = [];
-            const rows = document.querySelectorAll('#steps-body tr');
-            rows.forEach(row => {
-                const cells = row.querySelectorAll('td');
-                if (cells.length === 5) {
-                    steps.push({
-                        step: cells[0].innerText, desc: cells[1].innerText, danger: cells[2].innerText, safety: cells[3].innerText, emergency: cells[4].innerText
-                    });
-                }
-            });
-            const report = {
-                company: document.getElementById('company-name').innerText,
-                mainTitle: document.getElementById('report-main-title').innerText,
-                type: document.getElementById('field-type').innerText,
-                method: document.getElementById('field-method').innerText,
-                name: document.getElementById('field-name').innerText,
-                tools: document.getElementById('field-tools').innerText,
-                protective: document.getElementById('field-protective').innerText,
-                footerDept: document.getElementById('footer-dept').innerText,
-                footerAuthor: document.getElementById('footer-author').innerText,
-                footerDate: document.getElementById('footer-date').innerText,
-                steps: steps, category: document.getElementById('category-select').value, timestamp: Date.now()
-            };
-            if (currentLoadedReportId) report.id = currentLoadedReportId;
-            const tx = db.transaction('standards', 'readwrite');
-            const store = tx.objectStore('standards');
-            store.put(report);
-            tx.oncomplete = () => {
-                showToast(currentLoadedReportId ? "修改已儲存" : "新報告已收錄");
-                updateReportsDropdown();
-            };
-        }
-
-        async function deleteSelectedReport() {
-            if (!isAdmin) return;
-            const dropdown = document.getElementById('reports-dropdown');
-            const id = parseInt(dropdown.value);
-            
-            if (!id || isNaN(id)) {
-                return showToast("請從下拉選單選擇一份已存報告進行移除", "error");
-            }
-            
-            if (!confirm("⚠️ 警告：確定要永久移除這份報告嗎？此動作無法復原。")) return;
-            
-            const tx = db.transaction('standards', 'readwrite');
-            tx.objectStore('standards').delete(id);
-            tx.oncomplete = () => {
-                showToast("報告已成功移除", "error");
-                currentLoadedReportId = null;
-                updateSaveBtnText();
-                updateReportsDropdown();
-                renderReport({ type: '--', method: '--', name: '--', tools: '--', protective: '--', steps: [] });
-            };
-        }
-
-        async function exportDB() {
-            const tx = db.transaction('standards', 'readonly');
-            tx.objectStore('standards').getAll().onsuccess = (e) => {
-                const blob = new Blob([JSON.stringify(e.target.result)], {type: 'application/json'});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url;
-                a.download = `OSSPIS_DB_BACKUP_${new Date().toISOString().split('T')[0]}.json`;
-                a.click();
-                showToast("數據庫已導出");
-            };
-        }
-
-        async function importDB(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    const tx = db.transaction('standards', 'readwrite');
-                    const store = tx.objectStore('standards');
-                    data.forEach(item => { delete item.id; store.put(item); });
-                    tx.oncomplete = () => { showToast("數據庫導入成功"); updateReportsDropdown(); };
-                } catch (err) { showToast("導入格式錯誤", "error"); }
-            };
-            reader.readAsText(file);
-        }
-
-        async function downloadPDF() {
-            if (document.getElementById('file-preview-overlay').style.display === 'block') {
-                return showToast("此為外部檔案，請使用該檔案內建功能下載", "error");
-            }
-            const element = document.getElementById('report-preview');
-            const canvas = await html2canvas(element, { scale: 2 });
-            const imgData = canvas.toDataURL('image/png');
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const w = pdf.internal.pageSize.getWidth();
-            const h = (canvas.height * w) / canvas.width;
-            pdf.addImage(imgData, 'PNG', 0, 0, w, h);
-            pdf.save(`OSSPIS_REPORT_${document.getElementById('field-name').innerText}.pdf`);
-        }
-
-        function showToast(msg, type = "success") {
-            const t = document.getElementById('toast');
-            const icon = document.getElementById('toast-icon');
-            document.getElementById('toast-msg').innerText = msg;
-            icon.innerText = type === "success" ? "✓" : "✕";
-            icon.className = type === "success" ? "text-green-500" : "text-red-500";
-            t.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => t.classList.add('translate-y-20', 'opacity-0'), 3000);
-        }
-
-        document.getElementById('ai-generate-btn').onclick = generateAIReport;
-        document.getElementById('login-trigger').onclick = () => toggleModal('login-modal', true);
-        document.getElementById('save-report-btn').onclick = saveReport;
-        window.onload = initDB;
-    </script>
-</body>
-</html>
+    return res.status(200).json(data);
+  } catch (error) {
+    console.error("Server Error:", error);
+    return res.status(500).json({
+      error: error.message
+    });
+  }
+}
