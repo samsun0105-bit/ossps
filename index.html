@@ -62,18 +62,68 @@
             cursor: text;
         }
 
-        .a4-container {
-            width: 210mm;
-            min-height: 297mm;
-            padding: 20mm;
-            margin: auto;
-            background: white;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-            color: #1e293b;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
+.a4-container {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 20mm;
+    margin: auto;
+    background: white;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    color: #1e293b;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+整段改成：
+
+.a4-container {
+    width: 210mm;
+    max-height: calc(100vh - 170px);
+    padding: 0;
+    margin: auto;
+    background: transparent;
+    box-shadow: none;
+    color: #1e293b;
+    overflow: auto;
+    position: relative;
+}
+
+.report-page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 20mm;
+    margin: 0 auto 24px auto;
+    background: white;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    color: #1e293b;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.report-page-body {
+    flex: 1;
+}
+
+.report-page-number {
+    position: absolute;
+    right: 20mm;
+    bottom: 10mm;
+    font-size: 10px;
+    color: #475569;
+}
+
+.add-step-row-btn {
+    margin-top: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: #16a34a;
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+}
 
 @page {
     size: A4 portrait;
@@ -760,10 +810,11 @@
                 }
             });
 
-            document.querySelectorAll('#steps-body td').forEach(td => {
+            document.querySelectorAll('.steps-body-page td').forEach(td => {
                 td.contentEditable = isAdmin;
                 td.classList.toggle('admin-edit-mode', isAdmin);
             });
+            addAdminStepButtons();
             showToast(isAdmin ? "已切換至管理模式" : "已退出管理模式");
         }
 
@@ -832,42 +883,189 @@ steps 必須是 array，每一筆包含 step, desc, danger, safety, emergency。
     } // ← 關閉 generateAIReport
 
 
-        function renderReport(data) {
-            // 切換視圖
-            document.getElementById('file-preview-overlay').style.display = 'none';
-            document.getElementById('report-content-wrapper').style.display = 'block';
+function renderReport(data) {
+    document.getElementById('file-preview-overlay').style.display = 'none';
+    document.getElementById('report-content-wrapper').style.display = 'block';
 
-            document.getElementById('field-type').innerText = data.type || '--';
-            document.getElementById('field-method').innerText = data.method || '--';
-            document.getElementById('field-name').innerText = data.name || '--';
-            document.getElementById('field-tools').innerText = data.tools || '--';
-            document.getElementById('field-protective').innerText = data.protective || '--';
-            if(data.footerDept) document.getElementById('footer-dept').innerText = data.footerDept;
-            if(data.footerAuthor) document.getElementById('footer-author').innerText = data.footerAuthor;
-            if(data.footerDate) document.getElementById('footer-date').innerText = data.footerDate;
-            if(data.company) document.getElementById('company-name').innerText = data.company;
-            if(data.mainTitle) document.getElementById('report-main-title').innerText = data.mainTitle;
+    const wrapper = document.getElementById('report-content-wrapper');
+    wrapper.innerHTML = '';
 
-            const tbody = document.getElementById('steps-body');
-            tbody.innerHTML = '';
-            const steps = data.steps || [];
-            if (steps.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-40 text-gray-300 italic">請在左側搜尋欄位輸入作業名稱開始產出...</td></tr>';
-                return;
+    const steps = data.steps || [];
+
+    function createPage() {
+        const page = document.createElement('div');
+        page.className = 'report-page';
+
+        page.innerHTML = `
+            <div class="report-page-body">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold text-gray-900 outline-none company-name-page">${data.company || 'QNAP 威聯通科技股份有限公司'}</h2>
+                    <div class="h-1 w-full bg-black my-4"></div>
+                    <h3 class="text-xl font-bold tracking-[0.2em] text-gray-800 outline-none report-main-title-page">${data.mainTitle || '安全衛生作業標準程序報告書'}</h3>
+                </div>
+
+                <table class="report-table w-full text-xs mb-6">
+                    <tr>
+                        <th class="w-1/5">作業種類</th>
+                        <th class="w-1/5">作業方法</th>
+                        <th class="w-1/5">作業名稱</th>
+                        <th class="w-1/5">使用器具</th>
+                        <th class="w-1/5">防護具</th>
+                    </tr>
+                    <tr class="text-center">
+                        <td class="editable-field page-field-type">${data.type || '--'}</td>
+                        <td class="editable-field page-field-method">${data.method || '--'}</td>
+                        <td class="editable-field page-field-name font-bold">${data.name || '--'}</td>
+                        <td class="editable-field page-field-tools">${data.tools || '--'}</td>
+                        <td class="editable-field page-field-protective">${data.protective || '--'}</td>
+                    </tr>
+                </table>
+
+                <table class="report-table w-full text-xs">
+                    <thead>
+                        <tr>
+                            <th class="w-[12%]">工作步驟</th>
+                            <th class="w-[28%]">工作方法</th>
+                            <th class="w-[20%]">不安全因素</th>
+                            <th class="w-[20%]">安全措施</th>
+                            <th class="w-[20%]">事故處理</th>
+                        </tr>
+                    </thead>
+                    <tbody class="steps-body-page"></tbody>
+                </table>
+            </div>
+
+            <div class="mt-8 border-t-2 border-black pt-4 grid grid-cols-3 text-xs text-gray-700">
+                <div><span class="font-bold">管理單位：</span><span class="editable-field page-footer-dept">${data.footerDept || '職業安全衛生室'}</span></div>
+                <div class="text-center"><span class="font-bold">製表人：</span><span class="editable-field page-footer-author">${data.footerAuthor || 'Sam Sun'}</span></div>
+                <div class="text-right"><span class="font-bold">發行日期：</span><span class="editable-field page-footer-date">${data.footerDate || document.getElementById('footer-date')?.innerText || ''}</span></div>
+            </div>
+
+            <div class="report-page-number"></div>
+        `;
+
+        wrapper.appendChild(page);
+        return page;
+    }
+
+    function addStepRow(page, s) {
+        const tbody = page.querySelector('.steps-body-page');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td contenteditable="${isAdmin}" class="editable-field ${isAdmin ? 'admin-edit-mode' : ''}">${s.step || ''}</td>
+            <td contenteditable="${isAdmin}" class="editable-field ${isAdmin ? 'admin-edit-mode' : ''}">${s.desc || ''}</td>
+            <td contenteditable="${isAdmin}" class="editable-field ${isAdmin ? 'admin-edit-mode' : ''}">${s.danger || ''}</td>
+            <td contenteditable="${isAdmin}" class="editable-field ${isAdmin ? 'admin-edit-mode' : ''}">${s.safety || ''}</td>
+            <td contenteditable="${isAdmin}" class="editable-field ${isAdmin ? 'admin-edit-mode' : ''}">${s.emergency || ''}</td>
+        `;
+        tbody.appendChild(tr);
+        return tr;
+    }
+
+    if (steps.length === 0) {
+        const page = createPage();
+        page.querySelector('.steps-body-page').innerHTML =
+            '<tr><td colspan="5" class="text-center py-40 text-gray-300 italic">請在左側搜尋欄位輸入作業名稱開始產出...</td></tr>';
+    } else {
+        let page = createPage();
+        const maxPageHeight = 1050;
+
+        steps.forEach(step => {
+            const row = addStepRow(page, step);
+            if (page.scrollHeight > maxPageHeight) {
+                row.remove();
+                page = createPage();
+                addStepRow(page, step);
             }
-            steps.forEach(s => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td contenteditable="${isAdmin}" class="editable-field ${isAdmin?'admin-edit-mode':''}">${s.step}</td>
-                    <td contenteditable="${isAdmin}" class="editable-field ${isAdmin?'admin-edit-mode':''}">${s.desc}</td>
-                    <td contenteditable="${isAdmin}" class="editable-field ${isAdmin?'admin-edit-mode':''}">${s.danger}</td>
-                    <td contenteditable="${isAdmin}" class="editable-field ${isAdmin?'admin-edit-mode':''}">${s.safety}</td>
-                    <td contenteditable="${isAdmin}" class="editable-field ${isAdmin?'admin-edit-mode':''}">${s.emergency}</td>
-                `;
-                tbody.appendChild(tr);
+        });
+    }
+
+    syncFirstPageIdsForExistingFunctions();
+    updatePageNumbers();
+    addAdminStepButtons();
+}
+function syncFirstPageIdsForExistingFunctions() {
+    const firstPage = document.querySelector('.report-page');
+    if (!firstPage) return;
+
+    firstPage.querySelector('.company-name-page').id = 'company-name';
+    firstPage.querySelector('.report-main-title-page').id = 'report-main-title';
+    firstPage.querySelector('.page-field-type').id = 'field-type';
+    firstPage.querySelector('.page-field-method').id = 'field-method';
+    firstPage.querySelector('.page-field-name').id = 'field-name';
+    firstPage.querySelector('.page-field-tools').id = 'field-tools';
+    firstPage.querySelector('.page-field-protective').id = 'field-protective';
+    firstPage.querySelector('.page-footer-dept').id = 'footer-dept';
+    firstPage.querySelector('.page-footer-author').id = 'footer-author';
+    firstPage.querySelector('.page-footer-date').id = 'footer-date';
+
+    const firstStepsBody = firstPage.querySelector('.steps-body-page');
+    if (firstStepsBody) firstStepsBody.id = 'steps-body';
+}
+
+function updatePageNumbers() {
+    const pages = document.querySelectorAll('.report-page');
+    pages.forEach((page, index) => {
+        page.querySelector('.report-page-number').innerText =
+            `第 ${index + 1} 頁 / 共 ${pages.length} 頁`;
+    });
+}
+function addAdminStepButtons() {
+    document.querySelectorAll('.add-step-row-btn').forEach(btn => btn.remove());
+
+    if (!isAdmin) return;
+
+    document.querySelectorAll('.report-page').forEach(page => {
+        const btn = document.createElement('button');
+        btn.className = 'add-step-row-btn no-print';
+        btn.type = 'button';
+        btn.innerText = '+ 新增工作步驟';
+        btn.onclick = () => {
+            const tbody = page.querySelector('.steps-body-page');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td contenteditable="true" class="editable-field admin-edit-mode">新增步驟</td>
+                <td contenteditable="true" class="editable-field admin-edit-mode">請輸入工作方法</td>
+                <td contenteditable="true" class="editable-field admin-edit-mode">請輸入不安全因素</td>
+                <td contenteditable="true" class="editable-field admin-edit-mode">請輸入安全措施</td>
+                <td contenteditable="true" class="editable-field admin-edit-mode">請輸入事故處理</td>
+            `;
+            tbody.appendChild(tr);
+            repaginateCurrentReportFromDOM();
+        };
+        page.querySelector('.report-page-body').appendChild(btn);
+    });
+}
+
+function repaginateCurrentReportFromDOM() {
+    const steps = [];
+    document.querySelectorAll('.steps-body-page tr').forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length === 5) {
+            steps.push({
+                step: cells[0].innerText,
+                desc: cells[1].innerText,
+                danger: cells[2].innerText,
+                safety: cells[3].innerText,
+                emergency: cells[4].innerText
             });
         }
+    });
 
+    renderReport({
+        company: document.getElementById('company-name')?.innerText || 'QNAP 威聯通科技股份有限公司',
+        mainTitle: document.getElementById('report-main-title')?.innerText || '安全衛生作業標準程序報告書',
+        type: document.getElementById('field-type')?.innerText || '--',
+        method: document.getElementById('field-method')?.innerText || '--',
+        name: document.getElementById('field-name')?.innerText || '--',
+        tools: document.getElementById('field-tools')?.innerText || '--',
+        protective: document.getElementById('field-protective')?.innerText || '--',
+        footerDept: document.getElementById('footer-dept')?.innerText || '職業安全衛生室',
+        footerAuthor: document.getElementById('footer-author')?.innerText || 'Sam Sun',
+        footerDate: document.getElementById('footer-date')?.innerText || '',
+        steps
+    });
+}
         function renderExternalFile(data) {
             document.getElementById('report-content-wrapper').style.display = 'none';
             document.getElementById('file-preview-overlay').style.display = 'block';
@@ -950,7 +1148,7 @@ steps 必須是 array，每一筆包含 step, desc, danger, safety, emergency。
             }
 
             const steps = [];
-            const rows = document.querySelectorAll('#steps-body tr');
+            const rows = document.querySelectorAll('.steps-body-page tr');
             rows.forEach(row => {
                 const cells = row.querySelectorAll('td');
                 if (cells.length === 5) {
@@ -1032,20 +1230,37 @@ steps 必須是 array，每一筆包含 step, desc, danger, safety, emergency。
             reader.readAsText(file);
         }
 
-        async function downloadPDF() {
-            if (document.getElementById('file-preview-overlay').style.display === 'block') {
-                return showToast("此為外部檔案，請使用該檔案內建功能下載", "error");
-            }
-            const element = document.getElementById('report-preview');
-            const canvas = await html2canvas(element, { scale: 2 });
-            const imgData = canvas.toDataURL('image/png');
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const w = pdf.internal.pageSize.getWidth();
-            const h = (canvas.height * w) / canvas.width;
-            pdf.addImage(imgData, 'PNG', 0, 0, w, h);
-            pdf.save(`OSSPIS_REPORT_${document.getElementById('field-name').innerText}.pdf`);
-        }
+async function downloadPDF() {
+    if (document.getElementById('file-preview-overlay').style.display === 'block') {
+        return showToast("此為外部檔案，請使用該檔案內建功能下載", "error");
+    }
+
+    const pages = document.querySelectorAll('.report-page');
+    if (pages.length === 0) {
+        return showToast("目前沒有可匯出的報告頁面", "error");
+    }
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    for (let i = 0; i < pages.length; i++) {
+        const canvas = await html2canvas(pages[i], {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: "#ffffff"
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
+    }
+
+    const fileName = document.getElementById('field-name')?.innerText || 'REPORT';
+    pdf.save(`OSSPIS_REPORT_${fileName}.pdf`);
+}
 
         function showToast(msg, type = "success") {
             const t = document.getElementById('toast');
