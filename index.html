@@ -1006,7 +1006,7 @@ function repaginateCurrentReportFromDOM() {
             }
 
             const steps = [];
-            const rows = document.querySelectorAll('#steps-body tr');
+            const rows = document.querySelectorAll('.steps-body-page tr');
             rows.forEach(row => {
                 const cells = row.querySelectorAll('td');
                 if (cells.length === 5) {
@@ -1088,20 +1088,37 @@ function repaginateCurrentReportFromDOM() {
             reader.readAsText(file);
         }
 
-        async function downloadPDF() {
-            if (document.getElementById('file-preview-overlay').style.display === 'block') {
-                return showToast("此為外部檔案，請使用該檔案內建功能下載", "error");
-            }
-            const element = document.getElementById('report-preview');
-            const canvas = await html2canvas(element, { scale: 2 });
-            const imgData = canvas.toDataURL('image/png');
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const w = pdf.internal.pageSize.getWidth();
-            const h = (canvas.height * w) / canvas.width;
-            pdf.addImage(imgData, 'PNG', 0, 0, w, h);
-            pdf.save(`OSSPIS_REPORT_${document.getElementById('field-name').innerText}.pdf`);
-        }
+async function downloadPDF() {
+    if (document.getElementById('file-preview-overlay').style.display === 'block') {
+        return showToast("此為外部檔案，請使用該檔案內建功能下載", "error");
+    }
+
+    const pages = document.querySelectorAll('.report-page');
+    if (pages.length === 0) {
+        return showToast("目前沒有可匯出的報告頁面", "error");
+    }
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    for (let i = 0; i < pages.length; i++) {
+        const canvas = await html2canvas(pages[i], {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: "#ffffff"
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
+    }
+
+    const fileName = document.getElementById('field-name')?.innerText || 'REPORT';
+    pdf.save(`OSSPIS_REPORT_${fileName}.pdf`);
+}
 
         function showToast(msg, type = "success") {
             const t = document.getElementById('toast');
