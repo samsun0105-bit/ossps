@@ -760,11 +760,10 @@
                 }
             });
 
-            document.querySelectorAll('.steps-body-page td').forEach(td => {
+            document.querySelectorAll('#steps-body td').forEach(td => {
                 td.contentEditable = isAdmin;
                 td.classList.toggle('admin-edit-mode', isAdmin);
             });
-            addAdminStepButtons();
             showToast(isAdmin ? "已切換至管理模式" : "已退出管理模式");
         }
 
@@ -868,62 +867,7 @@ steps 必須是 array，每一筆包含 step, desc, danger, safety, emergency。
                 tbody.appendChild(tr);
             });
         }
-function addAdminStepButtons() {
-    document.querySelectorAll('.add-step-row-btn').forEach(btn => btn.remove());
 
-    if (!isAdmin) return;
-
-    document.querySelectorAll('.report-page').forEach(page => {
-        const btn = document.createElement('button');
-        btn.className = 'add-step-row-btn no-print';
-        btn.type = 'button';
-        btn.innerText = '+ 新增工作步驟';
-        btn.onclick = () => {
-            const tbody = page.querySelector('.steps-body-page');
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td contenteditable="true" class="editable-field admin-edit-mode">新增步驟</td>
-                <td contenteditable="true" class="editable-field admin-edit-mode">請輸入工作方法</td>
-                <td contenteditable="true" class="editable-field admin-edit-mode">請輸入不安全因素</td>
-                <td contenteditable="true" class="editable-field admin-edit-mode">請輸入安全措施</td>
-                <td contenteditable="true" class="editable-field admin-edit-mode">請輸入事故處理</td>
-            `;
-            tbody.appendChild(tr);
-            repaginateCurrentReportFromDOM();
-        };
-        page.querySelector('.report-page-body').appendChild(btn);
-    });
-}
-
-function repaginateCurrentReportFromDOM() {
-    const steps = [];
-    document.querySelectorAll('.steps-body-page tr').forEach(row => {
-        const cells = row.querySelectorAll('td');
-        if (cells.length === 5) {
-            steps.push({
-                step: cells[0].innerText,
-                desc: cells[1].innerText,
-                danger: cells[2].innerText,
-                safety: cells[3].innerText,
-                emergency: cells[4].innerText
-            });
-        }
-    });
-
-    renderReport({
-        company: document.getElementById('company-name')?.innerText || 'QNAP 威聯通科技股份有限公司',
-        mainTitle: document.getElementById('report-main-title')?.innerText || '安全衛生作業標準程序報告書',
-        type: document.getElementById('field-type')?.innerText || '--',
-        method: document.getElementById('field-method')?.innerText || '--',
-        name: document.getElementById('field-name')?.innerText || '--',
-        tools: document.getElementById('field-tools')?.innerText || '--',
-        protective: document.getElementById('field-protective')?.innerText || '--',
-        footerDept: document.getElementById('footer-dept')?.innerText || '職業安全衛生室',
-        footerAuthor: document.getElementById('footer-author')?.innerText || 'Sam Sun',
-        footerDate: document.getElementById('footer-date')?.innerText || '',
-        steps
-    });
-}
         function renderExternalFile(data) {
             document.getElementById('report-content-wrapper').style.display = 'none';
             document.getElementById('file-preview-overlay').style.display = 'block';
@@ -1006,7 +950,7 @@ function repaginateCurrentReportFromDOM() {
             }
 
             const steps = [];
-            const rows = document.querySelectorAll('.steps-body-page tr');
+            const rows = document.querySelectorAll('#steps-body tr');
             rows.forEach(row => {
                 const cells = row.querySelectorAll('td');
                 if (cells.length === 5) {
@@ -1088,37 +1032,20 @@ function repaginateCurrentReportFromDOM() {
             reader.readAsText(file);
         }
 
-async function downloadPDF() {
-    if (document.getElementById('file-preview-overlay').style.display === 'block') {
-        return showToast("此為外部檔案，請使用該檔案內建功能下載", "error");
-    }
-
-    const pages = document.querySelectorAll('.report-page');
-    if (pages.length === 0) {
-        return showToast("目前沒有可匯出的報告頁面", "error");
-    }
-
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-
-    for (let i = 0; i < pages.length; i++) {
-        const canvas = await html2canvas(pages[i], {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: "#ffffff"
-        });
-
-        const imgData = canvas.toDataURL('image/png');
-
-        if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
-    }
-
-    const fileName = document.getElementById('field-name')?.innerText || 'REPORT';
-    pdf.save(`OSSPIS_REPORT_${fileName}.pdf`);
-}
+        async function downloadPDF() {
+            if (document.getElementById('file-preview-overlay').style.display === 'block') {
+                return showToast("此為外部檔案，請使用該檔案內建功能下載", "error");
+            }
+            const element = document.getElementById('report-preview');
+            const canvas = await html2canvas(element, { scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const w = pdf.internal.pageSize.getWidth();
+            const h = (canvas.height * w) / canvas.width;
+            pdf.addImage(imgData, 'PNG', 0, 0, w, h);
+            pdf.save(`OSSPIS_REPORT_${document.getElementById('field-name').innerText}.pdf`);
+        }
 
         function showToast(msg, type = "success") {
             const t = document.getElementById('toast');
