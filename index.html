@@ -33,27 +33,97 @@
             border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
+            background: #cbd5e1;
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        .report-table th, .report-table td {
-            border: 1px solid #1e293b;
-            padding: 12px;
-            vertical-align: top;
-        }
+.footer-brand {
+    width: 100%;
+    text-align: center;
+    padding-top: 22px;
+    padding-bottom: 12px;
+}
 
-        .report-table th {
-            background-color: #f8fafc;
-            color: #1e293b;
-            font-weight: 700;
-        }
+.footer-line {
+    width: 180px;
+    height: 1px;
+    margin: 0 auto 14px auto;
+    background: linear-gradient(
+        to right,
+        transparent,
+        rgba(148,163,184,.7),
+        transparent
+    );
+}
 
-        .report-table td {
-            color: #334155;
-        }
+.footer-title {
+    color: #e2e8f0;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    font-weight: 500;
+    margin-bottom: 6px;
+    opacity: 0.92;
+}
+
+.footer-dev {
+    color: #60a5fa;
+    font-size: 10px;
+    font-style: italic;
+    letter-spacing: 0.08em;
+    opacity: 0.95;
+}        
+
+.report-table {
+    border-collapse: collapse;
+    border: 1.5px solid #111827;
+    font-size: 12px;
+}
+
+.report-table th,
+.report-table td {
+    border: 1px solid #374151;
+    padding: 12px;
+    vertical-align: top;
+    word-break: break-word;
+}
+
+.report-table th {
+    background: #e5e7eb;
+    color: #111827;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 0.04em;
+}
+
+.report-table td {
+    color: #1f2937;
+    line-height: 1.75;
+    background: #ffffff;
+}
+
+#steps-body tr:nth-child(even) td {
+    background: #f9fafb;
+}
+
+#steps-body td:first-child {
+    text-align: center;
+    font-weight: 700;
+    color: #111827;
+}
+
+#steps-body td:nth-child(3) {
+    color: #991b1b;
+}
+
+#steps-body td:nth-child(4) {
+    color: #166534;
+}
+
+#steps-body td:nth-child(5) {
+    color: #92400e;
+}
 
         .editable-field.admin-edit-mode {
             background-color: #fffbeb;
@@ -62,18 +132,96 @@
             cursor: text;
         }
 
-        .a4-container {
-            width: 210mm;
-            min-height: 297mm;
-            padding: 20mm;
-            margin: auto;
-            background: white;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-            color: #1e293b;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
+.a4-container {
+    width: 235mm;
+    min-height: 330mm;
+
+    padding: 20mm;
+    margin: auto;
+
+    background: white;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+
+    color: #1e293b;
+
+    display: flex;
+    flex-direction: column;
+
+    position: relative;
+    overflow: hidden;
+
+    transform: scale(1.03);
+    transform-origin: top center;
+}
+
+.report-header {
+    position: relative;
+    padding-bottom: 28px;
+}
+
+.document-code-box {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    font-size: 11px;
+    color: #374151;
+    border-bottom: 1px solid #9ca3af;
+    padding-bottom: 3px;
+}
+
+.document-code-label {
+    font-weight: 700;
+}
+
+.report-subtitle-en {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: #6b7280;
+    margin-top: 6px;
+    text-transform: uppercase;
+}
+
+#report-content-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+#report-content-wrapper::-webkit-scrollbar {
+    width: 6px;
+}
+
+#report-content-wrapper::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+#report-content-wrapper::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 999px;
+}
+
+#company-name {
+    font-size: 24px;
+    letter-spacing: 0.04em;
+}
+
+#report-main-title {
+    font-size: 22px;
+    letter-spacing: 0.28em;
+    padding-top: 4px;
+}
+
+#report-content-wrapper .h-1 {
+    height: 2px;
+    background: linear-gradient(to right, #111827, #6b7280, #111827);
+}
+
+#report-content-wrapper .grid.grid-cols-3 {
+    margin-top: 28px;
+    padding-top: 16px;
+    border-top: 2px solid #111827;
+    color: #374151;
+}
 
 @page {
     size: A4 portrait;
@@ -117,6 +265,7 @@
 
     .a4-container {
         width: 190mm !important;
+        height: auto !important;
         min-height: auto !important;
         padding: 0 !important;
         margin: 0 auto !important;
@@ -127,6 +276,12 @@
         transform: none !important;
         display: block !important;
     }
+    
+#report-content-wrapper {
+    overflow: visible !important;
+    height: auto !important;
+    padding-right: 0 !important;
+}
 
     .report-table {
         width: 100% !important;
@@ -148,12 +303,13 @@
         vertical-align: middle !important;
     }
 
-    .report-table th {
-        font-size: 15px !important;
-        font-weight: 700 !important;
-        text-align: center !important;
-        background: #e5e7eb !important;
-    }
+.report-table th {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    background: #e5e7eb !important;
+    letter-spacing: 0.04em !important;
+}
 
     h2 {
         font-size: 26px !important;
@@ -216,7 +372,7 @@
         /* 拖放區域樣式 */
         .drop-zone.drag-over {
             background-color: rgba(37, 99, 235, 0.1);
-            border: 2px dashed #3b82f6;
+            border: 2px dashed #93c5fd;
         }
         
         #file-preview-overlay {
@@ -349,7 +505,7 @@
         </aside>
 
         <!-- 右側主要區域 -->
-        <main class="relative overflow-y-auto p-8 no-scrollbar flex flex-col bg-slate-900">
+        <main class="relative overflow-y-auto px-8 pt-8 pb-16 no-scrollbar flex flex-col bg-slate-900">
             <!-- 浮動動作列 -->
             <div class="no-print sticky top-0 mb-8 z-[60] flex justify-between items-center">
                 <div id="status-tag" class="bg-slate-800/90 backdrop-blur px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-300">
@@ -378,13 +534,30 @@
                         <button id="download-word-link" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">下載檔案</button>
                     </div>
                 </div>
+<div id="report-content-wrapper">
 
-                <div id="report-content-wrapper">
-                    <div class="text-center mb-8">
-                        <h2 class="text-2xl font-bold text-gray-900 outline-none" id="company-name">QNAP 威聯通科技股份有限公司</h2>
-                        <div class="h-1 w-full bg-black my-4"></div>
-                        <h3 class="text-xl font-bold tracking-[0.2em] text-gray-800 outline-none" id="report-main-title">安全衛生作業標準程序報告書</h3>
-                    </div>
+<div class="report-header mb-8">
+
+    <div class="flex justify-end mb-3 pr-[1mm]">
+        <div id="document-code-wrapper"
+             class="hidden px-3 py-1 border border-slate-400 rounded-md text-[11px] text-slate-700 bg-slate-50">
+
+            <span class="font-bold tracking-wide">文件編號：</span>
+            <span id="document-code"
+                  class="editable-field outline-none"
+                  oninput="updateDocumentCodeVisibility()"></span>
+        </div>
+    </div>
+
+    <div class="text-center">
+        <h2 class="text-2xl font-bold text-gray-900 outline-none min-h-[34px]" id="company-name"></h2>
+        <div class="h-1 w-full bg-black my-4"></div>
+        <h3 class="text-xl font-bold tracking-[0.2em] text-gray-800 outline-none" id="report-main-title">安全作業標準程序書</h3>
+        <p class="report-subtitle-en">
+            SAFETY STANDARD OPERATING PROCEDURE
+        </p>
+    </div>
+</div>
 
                     <table class="report-table w-full text-xs mb-6">
                         <tr>
@@ -421,28 +594,36 @@
                     <div class="mt-8 border-t-2 border-black pt-4 grid grid-cols-3 text-xs text-gray-700">
                         <div>
                             <span class="font-bold">管理單位：</span>
-                            <span id="footer-dept" class="editable-field outline-none">職業安全衛生室</span>
+                            <span id="footer-dept" class="editable-field outline-none"></span>
                         </div>
                         <div class="text-center">
                             <span class="font-bold">製表人：</span>
-                            <span id="footer-author" class="editable-field outline-none">Sam Sun</span>
+                            <span id="footer-author" class="editable-field outline-none"></span>
                         </div>
                         <div class="text-right">
-                            <span class="font-bold">發行日期：</span>
-                            <span id="footer-date" class="editable-field outline-none"></span>
+                            <div class="mb-5">
+                                <span class="font-bold">日期：</span>
+                                <span id="footer-date" class="editable-field outline-none"></span>
+                            </div>
+
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="mt-8 mb-4 text-center no-print">
-                <p class="text-slate-500 text-[10px] tracking-widest font-light">
-                    © 2026 職業安全衛生室｜職業安全標準程序系統
-                </p>
-                <p class="text-slate-600 text-[9px] mt-1 italic">
-                    Developed by Sam Sun
-                </p>
-            </div>
+<div class="mt-10 mb-8 text-center no-print footer-brand">
+    
+    <div class="footer-line"></div>
+
+    <p class="footer-title">
+        © 2026 職業安全衛生室｜職業安全標準程序系統
+    </p>
+
+    <p class="footer-dev">
+        Developed by Sam Sun
+    </p>
+
+</div>
         </main>
     </div>
 
@@ -747,10 +928,10 @@
                 ? "bg-amber-500/20 backdrop-blur px-4 py-2 rounded-full border border-amber-500/50 text-xs text-amber-500 font-bold"
                 : "bg-slate-800/80 backdrop-blur px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-300";
 
-            const editableConfigs = [
-                'company-name', 'report-main-title', 'field-type', 'field-method', 'field-name', 
-                'field-tools', 'field-protective', 'footer-dept', 'footer-author', 'footer-date'
-            ];
+const editableConfigs = [
+    'company-name', 'report-main-title', 'document-code', 'field-type', 'field-method', 'field-name', 
+    'field-tools', 'field-protective', 'footer-dept', 'footer-author', 'footer-date'
+];
 
             editableConfigs.forEach(id => {
                 const el = document.getElementById(id);
@@ -765,6 +946,20 @@
                 td.classList.toggle('admin-edit-mode', isAdmin);
             });
             showToast(isAdmin ? "已切換至管理模式" : "已退出管理模式");
+            updateDocumentCodeVisibility();
+        }
+
+        function updateDocumentCodeVisibility() {
+            const wrapper = document.getElementById('document-code-wrapper');
+            const codeEl = document.getElementById('document-code');
+            if (wrapper && codeEl) {
+                const isEmpty = codeEl.innerText.trim() === '';
+                if (!isAdmin && isEmpty) {
+                    wrapper.classList.add('hidden');
+                } else {
+                    wrapper.classList.remove('hidden');
+                }
+            }
         }
 
 async function generateAIReport() {
@@ -845,8 +1040,9 @@ steps 必須是 array，每一筆包含 step, desc, danger, safety, emergency。
             if(data.footerDept) document.getElementById('footer-dept').innerText = data.footerDept;
             if(data.footerAuthor) document.getElementById('footer-author').innerText = data.footerAuthor;
             if(data.footerDate) document.getElementById('footer-date').innerText = data.footerDate;
-            if(data.company) document.getElementById('company-name').innerText = data.company;
-            if(data.mainTitle) document.getElementById('report-main-title').innerText = data.mainTitle;
+document.getElementById('company-name').innerText = data.company || '';
+document.getElementById('report-main-title').innerText = data.mainTitle || '安全作業標準程序書';
+document.getElementById('document-code').innerText = data.documentCode || '';
 
             const tbody = document.getElementById('steps-body');
             tbody.innerHTML = '';
@@ -866,6 +1062,7 @@ steps 必須是 array，每一筆包含 step, desc, danger, safety, emergency。
                 `;
                 tbody.appendChild(tr);
             });
+            updateDocumentCodeVisibility();
         }
 
         function renderExternalFile(data) {
@@ -962,6 +1159,7 @@ steps 必須是 array，每一筆包含 step, desc, danger, safety, emergency。
             const report = {
                 company: document.getElementById('company-name').innerText,
                 mainTitle: document.getElementById('report-main-title').innerText,
+                documentCode: document.getElementById('document-code').innerText,
                 type: document.getElementById('field-type').innerText,
                 method: document.getElementById('field-method').innerText,
                 name: document.getElementById('field-name').innerText,
@@ -1032,20 +1230,81 @@ steps 必須是 array，每一筆包含 step, desc, danger, safety, emergency。
             reader.readAsText(file);
         }
 
-        async function downloadPDF() {
-            if (document.getElementById('file-preview-overlay').style.display === 'block') {
-                return showToast("此為外部檔案，請使用該檔案內建功能下載", "error");
-            }
-            const element = document.getElementById('report-preview');
-            const canvas = await html2canvas(element, { scale: 2 });
-            const imgData = canvas.toDataURL('image/png');
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const w = pdf.internal.pageSize.getWidth();
-            const h = (canvas.height * w) / canvas.width;
-            pdf.addImage(imgData, 'PNG', 0, 0, w, h);
-            pdf.save(`OSSPIS_REPORT_${document.getElementById('field-name').innerText}.pdf`);
+async function downloadPDF() {
+    if (document.getElementById('file-preview-overlay').style.display === 'block') {
+        return showToast("此為外部檔案，請使用該檔案內建功能下載", "error");
+    }
+
+    const reportPreview = document.getElementById('report-preview');
+    const reportContent = document.getElementById('report-content-wrapper');
+
+    if (!reportPreview || !reportContent) {
+        return showToast("找不到報告內容，請確認 report-content-wrapper 是否存在", "error");
+    }
+
+    document.getElementById('loading-text').innerText = "正在產生多頁 PDF...";
+    document.getElementById('loading').classList.remove('hidden');
+
+    const originalPreviewHeight = reportPreview.style.height;
+    const originalPreviewOverflow = reportPreview.style.overflow;
+    const originalContentOverflow = reportContent.style.overflow;
+    const originalContentHeight = reportContent.style.height;
+
+    try {
+        reportPreview.style.height = 'auto';
+        reportPreview.style.overflow = 'visible';
+        reportContent.style.overflow = 'visible';
+        reportContent.style.height = 'auto';
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const canvas = await html2canvas(reportPreview, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            windowWidth: reportPreview.scrollWidth,
+            windowHeight: reportPreview.scrollHeight
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+
+        const imgWidth = pdfWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+
+        while (heightLeft > 0) {
+            position -= pdfHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pdfHeight;
         }
+
+        const fileName = document.getElementById('field-name').innerText.trim() || '安全作業標準程序書';
+        pdf.save(`OSSPIS_REPORT_${fileName}.pdf`);
+
+        showToast("多頁 PDF 已產生");
+    } catch (error) {
+        console.error("PDF 產生錯誤：", error);
+        showToast("PDF 產生失敗：" + error.message, "error");
+    } finally {
+        reportPreview.style.height = originalPreviewHeight;
+        reportPreview.style.overflow = originalPreviewOverflow;
+        reportContent.style.overflow = originalContentOverflow;
+        reportContent.style.height = originalContentHeight;
+        document.getElementById('loading').classList.add('hidden');
+    }
+}
 
         function showToast(msg, type = "success") {
             const t = document.getElementById('toast');
