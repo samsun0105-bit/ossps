@@ -1291,7 +1291,7 @@ async function downloadPDF() {
         }
 
         const fileName = document.getElementById('field-name').innerText.trim() || '安全作業標準程序書';
-        pdf.save(`OSSPIS_REPORT_${fileName}.pdf`);
+        pdf.save(`安全作業標準程序書_${fileName}.pdf`);
 
         showToast("多頁 PDF 已產生");
     } catch (error) {
