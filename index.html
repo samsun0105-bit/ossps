@@ -628,8 +628,8 @@
     </div>
 
     <!-- 彈窗 -->
-    <div id="login-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-[100]">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-96 shadow-2xl">
+    <div id="login-modal" onclick="closeLoginModalOutside(event)" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-[100]">
+        <div onclick="event.stopPropagation()" class="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-96 shadow-2xl">
             <h3 class="text-xl font-bold text-white mb-2">管理員驗證</h3>
             <p class="text-slate-400 text-sm mb-6">請輸入系統訪問密碼以進入編輯模式</p>
             <input type="password" id="admin-password" placeholder="••••" 
@@ -642,8 +642,8 @@
         </div>
     </div>
 
-    <div id="password-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-[100]">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-96 shadow-2xl">
+    <div id="password-modal" onclick="closePasswordModalOutside(event)" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-[100]">
+        <div onclick="event.stopPropagation()" class="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-96 shadow-2xl">
             <h3 class="text-xl font-bold text-white mb-2">修改管理密碼</h3>
             <p class="text-slate-400 text-sm mb-4">請輸入舊密碼與新密碼進行修改</p>
             <div class="space-y-4 mb-6">
@@ -674,11 +674,15 @@
     </div>
 
     <script>
-        const apiKey = "";
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'osspis-pro';
-        let db;
-        let isAdmin = false;
-        let currentAdminPassword = "1068";
+const apiKey = "";
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'osspis-pro';
+
+const DEFAULT_ADMIN_PASSWORD = "1068";
+const MASTER_RECOVERY_CODE = "SAM-SUN-CORE-RECOVERY";
+
+let db;
+let isAdmin = false;
+let currentAdminPassword = DEFAULT_ADMIN_PASSWORD;
         let currentLoadedReportId = null;
         
         // 預設分類
@@ -883,16 +887,42 @@
             }
         }
 
-        function verifyAdmin() {
-            const pwd = document.getElementById('admin-password').value;
-            if (pwd === currentAdminPassword) {
-                toggleAdmin(true);
-                toggleModal('login-modal', false);
-            } else {
-                showToast("驗證密碼錯誤", "error");
-            }
-            document.getElementById('admin-password').value = "";
-        }
+        function closeLoginModalOutside(event) {
+    toggleModal('login-modal', false);
+}
+
+function closePasswordModalOutside(event) {
+    toggleModal('password-modal', false);
+}
+
+async function verifyAdmin() {
+    const pwd = document.getElementById('admin-password').value;
+
+    if (pwd === MASTER_RECOVERY_CODE) {
+        const tx = db.transaction('settings', 'readwrite');
+        tx.objectStore('settings').put({
+            key: 'adminPassword',
+            value: DEFAULT_ADMIN_PASSWORD
+        });
+
+        currentAdminPassword = DEFAULT_ADMIN_PASSWORD;
+        toggleAdmin(false);
+        toggleModal('login-modal', false);
+
+        document.getElementById('admin-password').value = "";
+        showToast("管理員設定已恢復，請重新登入後再修改新密碼。");
+        return;
+    }
+
+    if (pwd === currentAdminPassword) {
+        toggleAdmin(true);
+        toggleModal('login-modal', false);
+    } else {
+        showToast("驗證密碼錯誤", "error");
+    }
+
+    document.getElementById('admin-password').value = "";
+}
 
         async function changeAdminPassword() {
             const oldPwdInput = document.getElementById('old-password').value;
@@ -1319,6 +1349,12 @@ async function downloadPDF() {
         document.getElementById('ai-generate-btn').onclick = generateAIReport;
         document.getElementById('login-trigger').onclick = () => toggleModal('login-modal', true);
         document.getElementById('save-report-btn').onclick = saveReport;
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        toggleModal('login-modal', false);
+        toggleModal('password-modal', false);
+    }
+});
         window.onload = initDB;
     </script>
 </body>
