@@ -484,11 +484,11 @@
                         <div class="grid grid-cols-2 gap-3">
                             <button onclick="exportDB()" class="text-center text-xs text-slate-400 hover:text-white flex flex-col items-center justify-center space-y-1 py-3 bg-slate-800/50 rounded-lg border border-slate-700/50 transition">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                                <span class="font-semibold">導出數據庫</span>
+                                <span class="upload">導出數據</span>
                             </button>
                             <button onclick="document.getElementById('import-file').click()" class="text-center text-xs text-slate-400 hover:text-white flex flex-col items-center justify-center space-y-1 py-3 bg-slate-800/50 rounded-lg border border-slate-700/50 transition">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0L8 8m4 4V4"></path></svg>
-                                <span class="font-semibold">導入數據庫</span>
+                                <span class="download">導入數據</span>
                             </button>
                         </div>
                         <input type="file" id="import-file" class="hidden" accept=".json" onchange="importDB(event)">
@@ -1240,7 +1240,7 @@ document.getElementById('document-code').innerText = data.documentCode || '';
                 const a = document.createElement('a'); a.href = url;
                 a.download = `職業安全標準程序系統_OSSPS_${new Date().toISOString().split('T')[0]}.json`;
                 a.click();
-                showToast("數據庫已導出");
+                showToast("數據已導出");
             };
         }
 
@@ -1254,7 +1254,7 @@ document.getElementById('document-code').innerText = data.documentCode || '';
                     const tx = db.transaction('standards', 'readwrite');
                     const store = tx.objectStore('standards');
                     data.forEach(item => { delete item.id; store.put(item); });
-                    tx.oncomplete = () => { showToast("數據庫導入成功"); updateReportsDropdown(); };
+                    tx.oncomplete = () => { showToast("數據導入成功"); updateReportsDropdown(); };
                 } catch (err) { showToast("導入格式錯誤", "error"); }
             };
             reader.readAsText(file);
