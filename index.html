@@ -1238,7 +1238,7 @@ document.getElementById('document-code').innerText = data.documentCode || '';
                 const blob = new Blob([JSON.stringify(e.target.result)], {type: 'application/json'});
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a'); a.href = url;
-                a.download = `職業安全標準程序系統_OSSPS_${new Date().toISOString().split('T')[0]}.json`;
+                a.download = `職業安全標準程序系統_SPS_${new Date().toISOString().split('T')[0]}.json`;
                 a.click();
                 showToast("數據已導出");
             };
