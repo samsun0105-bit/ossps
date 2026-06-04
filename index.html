@@ -3,1359 +3,2204 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>職業安全標準程序系統</title>
+    <title>職業安全績效管理系統 (OSPMS)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Noto+Sans+TC:wght@300;400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8fafc; overflow: hidden; }
         
-        :root {
-            --primary: #2563eb;
-            --admin-accent: #f59e0b;
+        .sidebar { width: 280px; flex-shrink: 0; }
+
+        .table-container { 
+            overflow: auto; 
+            height: calc(100vh - 160px); 
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
-        body {
-            font-family: 'Inter', 'Noto Sans TC', sans-serif;
-            background-color: #0f172a;
-            color: #e2e8f0;
+        .sticky-col-num { position: sticky; left: 0; z-index: 25; background: #fff; min-width: 40px; text-align: center; }
+        .sticky-col-name { position: sticky; left: 40px; z-index: 25; background: #fff; border-right: 2px solid #f1f5f9; min-width: 170px; }
+
+        tr:hover .sticky-col-num, tr:hover .sticky-col-name { background-color: #f8fafc; }
+
+        thead th { position: sticky; top: 0; z-index: 30; background: #f1f5f9; }
+        thead th.sticky-col-num { z-index: 41; left: 0; }
+        thead th.sticky-col-name { z-index: 40; left: 40px; }
+
+
+        #main-table { table-layout: fixed; min-width: 1282px; }
+        #main-table th, #main-table td { vertical-align: middle; }
+        #main-table th:nth-child(1), #main-table td:nth-child(1) { width: 40px; }
+        #main-table th:nth-child(2), #main-table td:nth-child(2) { width: 170px; }
+        #main-table th:nth-child(3), #main-table td:nth-child(3) { width: 310px; }
+        #main-table th:nth-child(4), #main-table td:nth-child(4) { width: 56px; }
+        #main-table th:nth-child(5), #main-table td:nth-child(5) { width: 58px; }
+        #main-table th:nth-child(n+6):nth-child(-n+17),
+        #main-table td:nth-child(n+6):nth-child(-n+17) { width: 54px; }
+
+        .input-cell { 
+            width: 100%; 
+            text-align: center; 
+            border: 1px solid transparent; 
+            border-radius: 4px; 
+            padding: 3px 1px; 
+            font-size: 11px; 
+            transition: all 0.2s;
+            background: transparent;
+            color: #475569;
+        }
+        .input-cell:disabled { cursor: not-allowed; opacity: 1; color: #475569; }
+        .input-cell:not(:disabled):hover { border-color: #cbd5e1; background: #fff; }
+        .input-cell:not(:disabled):focus { border-color: #3b82f6; background: #fff; outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
+
+        .admin-edit-cell { background-color: #fefce8 !important; border: 1px dashed #eab308 !important; color: #475569 !important; }
+
+        .year-input {
+            background: #dbeafe;
+            color: #1d4ed8;
+            border: 2px solid transparent;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 6px;
+            width: 180px;
+            text-align: center;
+            font-size: 12px;
+            cursor: pointer;
         }
 
-        /* 自定義左側滾動條樣式 */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
+        .attachment-btn {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #1e293b;
+        .attachment-btn i { 
+            width: 10px; 
+            height: 10px; 
+            stroke-width: 2.5px; 
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #475569;
-            border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #cbd5e1;
+        .attachment-btn.has-file { color: #3b82f6; opacity: 1; }
+        .attachment-btn.no-file { color: #d1d5db; opacity: 0.4; }
+        .attachment-btn:hover { opacity: 1; transform: scale(1.2); }
+
+        #upload-status-box.drag-over {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            transform: scale(1.02);
         }
 
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* 排序選單樣式 */
+        .sort-menu {
+            position: absolute;
+            background: white;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            padding: 4px;
+            z-index: 100;
+            display: none;
+            min-width: 120px;
+        }
+        .sort-menu button {
+            width: 100%;
+            text-align: left;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+        }
+        .sort-menu button:hover { background: #f1f5f9; color: #1e293b; }
+        .sort-menu button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.footer-brand {
+.system-footer-light {
     width: 100%;
     text-align: center;
-    padding-top: 22px;
-    padding-bottom: 12px;
+
+    padding: 4px 0 2px 0;
+
+    margin-top: 0px;
+    margin-bottom: 4px;
+
+    background: transparent;
 }
 
-.footer-line {
-    width: 180px;
+.footer-line-light {
+    width: 80px;
     height: 1px;
-    margin: 0 auto 14px auto;
+
+    margin: 0 auto 4px auto;
+
     background: linear-gradient(
         to right,
         transparent,
-        rgba(148,163,184,.7),
+        rgba(148,163,184,.35),
         transparent
     );
 }
 
-.footer-title {
-    color: #e2e8f0;
-    font-size: 11px;
-    letter-spacing: 0.18em;
-    font-weight: 500;
-    margin-bottom: 6px;
-    opacity: 0.92;
+.footer-title-light {
+    color: #64748b;
+
+    font-size: 12px;
+    letter-spacing: 0.16em;
+
+    font-weight: 700;
+
+    margin-bottom: 8px;
 }
 
-.footer-dev {
-    color: #60a5fa;
-    font-size: 10px;
+.footer-dev-light {
+    color: #3b82f6;
+
+    font-size: 11px;
+
     font-style: italic;
     letter-spacing: 0.08em;
-    opacity: 0.95;
-}        
-
-.report-table {
-    border-collapse: collapse;
-    border: 1.5px solid #111827;
-    font-size: 12px;
 }
 
-.report-table th,
-.report-table td {
-    border: 1px solid #374151;
-    padding: 12px;
-    vertical-align: top;
-    word-break: break-word;
-}
+        @media print {
+            @page { size: A4 landscape; margin: 0.7cm; }
 
-.report-table th {
-    background: #e5e7eb;
-    color: #111827;
-    font-weight: 700;
-    text-align: center;
-    letter-spacing: 0.04em;
-}
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                box-shadow: none !important;
+                text-shadow: none !important;
+            }
 
-.report-table td {
-    color: #1f2937;
-    line-height: 1.75;
-    background: #ffffff;
-}
+            html,
+            body {
+                width: auto !important;
+                height: auto !important;
+                min-height: auto !important;
+                overflow: visible !important;
+                background: #ffffff !important;
+            }
 
-#steps-body tr:nth-child(even) td {
-    background: #f9fafb;
-}
+            body {
+                display: block !important;
+                font-size: 9px !important;
+                color: #0f172a !important;
+            }
 
-#steps-body td:first-child {
-    text-align: center;
-    font-weight: 700;
-    color: #111827;
-}
+            .no-print,
+            .sidebar,
+            #admin-add-section,
+            #sort-menu,
+            #login-modal,
+            #attachment-modal,
+            #admin-header-action,
+            .attachment-btn {
+                display: none !important;
+            }
 
-#steps-body td:nth-child(3) {
-    color: #991b1b;
-}
+            main,
+            main.flex-1,
+            main.flex,
+            main.flex-col,
+            body > main {
+                display: block !important;
+                width: 100% !important;
+                min-width: 0 !important;
+                height: auto !important;
+                min-height: auto !important;
+                overflow: visible !important;
+            }
 
-#steps-body td:nth-child(4) {
-    color: #166534;
-}
+            header {
+                display: block !important;
+                padding: 0 0 8px 0 !important;
+                margin: 0 0 8px 0 !important;
+                border-bottom: 2px solid #1e293b !important;
+                background: #ffffff !important;
+                page-break-after: avoid !important;
+            }
 
-#steps-body td:nth-child(5) {
-    color: #92400e;
-}
+            #current-category-title {
+                font-size: 17px !important;
+                line-height: 1.25 !important;
+                font-weight: 900 !important;
+                color: #0f172a !important;
+                margin: 0 0 4px 0 !important;
+            }
 
-        .editable-field.admin-edit-mode {
-            background-color: #fffbeb;
-            border: 1px dashed #f59e0b !important;
-            color: #92400e !important;
-            cursor: text;
-        }
+            #year-input-field {
+                width: auto !important;
+                min-width: 120px !important;
+                padding: 0 !important;
+                border: 0 !important;
+                background: transparent !important;
+                color: #334155 !important;
+                font-size: 10px !important;
+                font-weight: 700 !important;
+                text-align: left !important;
+            }
 
-.a4-container {
-    width: 235mm;
-    min-height: 330mm;
+            main > .p-4,
+            .p-4.flex-1,
+            .p-4.overflow-hidden,
+            .flex-1.overflow-hidden {
+                display: block !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                max-height: none !important;
+                overflow: visible !important;
+            }
 
-    padding: 20mm;
-    margin: auto;
+            .table-container {
+                display: block !important;
+                overflow: visible !important;
+                height: auto !important;
+                max-height: none !important;
+                width: 100% !important;
+                border-radius: 0 !important;
+                background: #ffffff !important;
+            }
 
-    background: white;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            table {
+                width: 100% !important;
+                table-layout: fixed !important;
+                border-collapse: collapse !important;
+                border-spacing: 0 !important;
+                font-size: 8px !important;
+                line-height: 1.25 !important;
+                page-break-inside: auto !important;
+            }
 
-    color: #1e293b;
+            thead {
+                display: table-header-group !important;
+            }
 
-    display: flex;
-    flex-direction: column;
+            tbody {
+                display: table-row-group !important;
+            }
 
-    position: relative;
-    overflow: hidden;
+            tr {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                page-break-after: auto !important;
+            }
 
-    transform: scale(1.03);
-    transform-origin: top center;
-}
+            thead th,
+            thead th.sticky-col-num,
+            thead th.sticky-col-name,
+            .sticky-col-num,
+            .sticky-col-name {
+                position: static !important;
+                left: auto !important;
+                top: auto !important;
+                z-index: auto !important;
+                background: #ffffff !important;
+                min-width: 0 !important;
+                border-right: 1px solid #cbd5e1 !important;
+            }
 
-.report-header {
-    position: relative;
-    padding-bottom: 28px;
-}
+            thead th {
+                background: #e2e8f0 !important;
+                color: #0f172a !important;
+                font-weight: 900 !important;
+                text-align: center !important;
+            }
 
-.document-code-box {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    font-size: 11px;
-    color: #374151;
-    border-bottom: 1px solid #9ca3af;
-    padding-bottom: 3px;
-}
+            th,
+            td {
+                padding: 3px 2px !important;
+                border: 1px solid #cbd5e1 !important;
+                vertical-align: middle !important;
+                word-break: break-word !important;
+                overflow-wrap: anywhere !important;
+                white-space: normal !important;
+            }
 
-.document-code-label {
-    font-weight: 700;
-}
+            td:nth-child(1), th:nth-child(1) { width: 3.5% !important; text-align: center !important; }
+            td:nth-child(2), th:nth-child(2) { width: 13% !important; }
+            td:nth-child(3), th:nth-child(3) { width: 25% !important; }
+            td:nth-child(4), th:nth-child(4) { width: 4.5% !important; text-align: center !important; }
+            td:nth-child(5), th:nth-child(5) { width: 4.5% !important; text-align: center !important; }
+            td:nth-child(n+6):nth-child(-n+17),
+            th:nth-child(n+6):nth-child(-n+17) { width: 4.125% !important; text-align: center !important; }
 
-.report-subtitle-en {
-    font-size: 11px;
-    letter-spacing: 0.18em;
-    color: #6b7280;
-    margin-top: 6px;
-    text-transform: uppercase;
-}
+            .input-cell,
+            .input-cell:disabled {
+                display: block !important;
+                width: 100% !important;
+                min-height: 12px !important;
+                padding: 0 !important;
+                border: 0 !important;
+                border-radius: 0 !important;
+                background: transparent !important;
+                color: #0f172a !important;
+                font-size: 8px !important;
+                line-height: 1.2 !important;
+                text-align: center !important;
+            }
 
-#report-content-wrapper {
-    flex: 1;
-    overflow-y: auto;
-    padding-right: 6px;
-}
+            .admin-edit-cell,
+            textarea {
+                border: 0 !important;
+                background: transparent !important;
+                resize: none !important;
+                overflow: visible !important;
+            }
 
-#report-content-wrapper::-webkit-scrollbar {
-    width: 6px;
-}
+            .system-footer-light {
+                display: block !important;
+                width: 100% !important;
+                margin-top: 8px !important;
+                padding-top: 4px !important;
+                page-break-inside: avoid !important;
+                border-top: 1px solid #cbd5e1 !important;
+            }
 
-#report-content-wrapper::-webkit-scrollbar-track {
-    background: #f1f5f9;
-}
+            .footer-line-light {
+                display: none !important;
+            }
 
-#report-content-wrapper::-webkit-scrollbar-thumb {
-    background: #94a3b8;
-    border-radius: 999px;
-}
+            .footer-title-light {
+                margin-bottom: 2px !important;
+                font-size: 8px !important;
+                color: #64748b !important;
+                letter-spacing: 0.08em !important;
+            }
 
-#company-name {
-    font-size: 24px;
-    letter-spacing: 0.04em;
-}
-
-#report-main-title {
-    font-size: 22px;
-    letter-spacing: 0.28em;
-    padding-top: 4px;
-}
-
-#report-content-wrapper .h-1 {
-    height: 2px;
-    background: linear-gradient(to right, #111827, #6b7280, #111827);
-}
-
-#report-content-wrapper .grid.grid-cols-3 {
-    margin-top: 28px;
-    padding-top: 16px;
-    border-top: 2px solid #111827;
-    color: #374151;
-}
-
-@page {
-    size: A4 portrait;
-    margin: 10mm;
-}
-
-@media print {
-    html,
-    body {
-        background: white !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        overflow: visible !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-
-    .no-print,
-    .sidebar,
-    #status-tag,
-    #toast,
-    #loading {
-        display: none !important;
-    }
-
-    .main-layout {
-        display: block !important;
-        height: auto !important;
-        width: 100% !important;
-    }
-
-    main {
-        display: block !important;
-        width: 100% !important;
-        height: auto !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        overflow: visible !important;
-        background: white !important;
-    }
-
-    .a4-container {
-        width: 190mm !important;
-        height: auto !important;
-        min-height: auto !important;
-        padding: 0 !important;
-        margin: 0 auto !important;
-        box-shadow: none !important;
-        background: white !important;
-        color: #000 !important;
-        overflow: visible !important;
-        transform: none !important;
-        display: block !important;
-    }
-    
-#report-content-wrapper {
-    overflow: visible !important;
-    height: auto !important;
-    padding-right: 0 !important;
-}
-
-    .report-table {
-        width: 100% !important;
-        table-layout: fixed !important;
-        border-collapse: collapse !important;
-        margin-bottom: 10mm !important;
-    }
-
-    .report-table th,
-    .report-table td {
-        border: 1px solid #000 !important;
-        font-size: 14px !important;
-        line-height: 1.8 !important;
-        padding: 12px 10px !important;
-        color: #000 !important;
-        background: white !important;
-        word-break: break-word !important;
-        white-space: normal !important;
-        vertical-align: middle !important;
-    }
-
-.report-table th {
-    font-size: 15px !important;
-    font-weight: 700 !important;
-    text-align: center !important;
-    background: #e5e7eb !important;
-    letter-spacing: 0.04em !important;
-}
-
-    h2 {
-        font-size: 26px !important;
-        line-height: 1.4 !important;
-        margin-bottom: 12px !important;
-    }
-
-    h3 {
-        font-size: 20px !important;
-        line-height: 1.4 !important;
-        margin-bottom: 10px !important;
-        letter-spacing: 0.12em !important;
-    }
-
-    #steps-body tr {
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-    }
-
-    .border-t-2 {
-        border-top: 2px solid #000 !important;
-    }
-
-    #footer-dept,
-    #footer-author,
-    #footer-date {
-        font-size: 12px !important;
-        color: #000 !important;
-    }
-}
-
-        .main-layout {
-            display: grid;
-            grid-template-columns: 350px 1fr;
-            height: 100vh;
-        }
-
-        .sidebar {
-            background-color: #1e293b;
-            border-right: 1px solid #334155;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-
-        .logo-pulse {
-            animation: pulse-blue 2s infinite;
-        }
-        @keyframes pulse-blue {
-            0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
-        }
-        
-        @keyframes spin-slow {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        /* 拖放區域樣式 */
-        .drop-zone.drag-over {
-            background-color: rgba(37, 99, 235, 0.1);
-            border: 2px dashed #93c5fd;
-        }
-        
-        #file-preview-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: white;
-            z-index: 50;
-            display: none;
+            .footer-dev-light {
+                font-size: 7px !important;
+                color: #64748b !important;
+            }
         }
     </style>
 </head>
-<body>
+<body class="text-slate-800 flex h-screen">
 
-    <div class="main-layout">
-        <!-- 左側導覽面板 -->
-        <aside class="sidebar no-print">
-            <!-- 固定頭部 -->
-            <div class="p-6 pb-4">
-                <div class="flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg logo-pulse flex-shrink-0">
-                        <!-- 修改處：齒輪圖示 (Cog/Gear Icon) 搭配慢速旋轉動畫 -->
-                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="animation: spin-slow 8s linear infinite;">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        </svg>
+    <aside class="sidebar bg-slate-900 flex flex-col no-print">
+        <div class="p-6 border-b border-slate-800">
+            <div class="flex justify-between items-start">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-blue-500 p-2 rounded-xl">
+                        <i data-lucide="shield-check" class="w-6 h-6 text-white"></i>
                     </div>
                     <div>
-                        <h1 class="text-base font-black leading-tight text-blue-400">職業安全標準程序系統</h1>
-                        <p class="text-[9px] text-slate-400 tracking-tight uppercase font-medium">Occupational Safety Standard Procedure System</p>
+                        <h1 class="text-base font-black text-white tracking-tight leading-none">職業安全績效管理系統</h1>
+                        <p class="text-[9px] text-blue-400 font-bold uppercase tracking-tighter mt-1">Occupational Safety Performance Management System</p>
                     </div>
                 </div>
+                <button id="admin-toggle-btn" onclick="handleAuthClick()" class="text-slate-500 hover:text-white transition-colors">
+                    <i data-lucide="lock" class="w-5 h-5" id="auth-icon"></i>
+                </button>
             </div>
-
-            <!-- 可捲動的功能區域 -->
-            <div class="flex-1 overflow-y-auto custom-scrollbar p-6 pt-0">
-                <!-- 搜尋區 -->
-                <div class="space-y-4 mb-8">
-                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">作業搜尋與生成</label>
-                    <div class="relative">
-                        <input type="text" id="search-input" placeholder="輸入作業名稱..." class="w-full bg-slate-800 border border-slate-700 rounded-lg py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-white">
-                        <svg class="w-4 h-4 absolute left-3 top-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    </div>
-                    <button id="ai-generate-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg shadow-lg shadow-blue-900/20 flex items-center justify-center space-x-2 transition transform active:scale-95 text-sm">
-                        <span>✨ AI 自動產出報告</span>
-                    </button>
-                </div>
-
-                <!-- 報告分類 -->
-                <div id="drop-zone" class="space-y-4 mb-8 p-1 rounded-lg transition-all drop-zone">
-                    <div class="flex justify-between items-center">
-                        <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">報告分類項目</label>
-                        <!-- 管理員分類操作按鈕 -->
-                        <div id="category-admin-tools" class="hidden flex space-x-2">
-                            <button onclick="document.getElementById('file-upload-input').click()" class="text-green-400 hover:text-green-300" title="上傳 PDF/Word">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                            </button>
-                            <button onclick="addCategory()" class="text-blue-400 hover:text-blue-300" title="新增分類">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            </button>
-                            <button onclick="editCategory()" class="text-amber-500 hover:text-amber-400" title="修改分類名稱">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                            </button>
-                            <button onclick="removeCategory()" class="text-red-500 hover:text-red-400" title="刪除分類">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            </button>
-                        </div>
-                    </div>
-                    <select id="category-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg py-3 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-white transition cursor-pointer" onchange="updateReportsDropdown()">
-                        <!-- 分類選項將由 JS 動態生成 -->
-                    </select>
-                    <input type="file" id="file-upload-input" class="hidden" accept=".pdf,.doc,.docx" onchange="handleFileUpload(event)">
-                    <div id="drag-hint" class="hidden text-[10px] text-blue-400 text-center animate-pulse">拖放檔案於此處上傳...</div>
-                </div>
-
-                <!-- 已儲存報告清單 -->
-                <div class="space-y-4 mb-8">
-                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">選擇已儲存報告</label>
-                    <div class="flex space-x-2">
-                        <select id="reports-dropdown" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg py-3 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-300 transition cursor-pointer disabled:opacity-50" onchange="handleDropdownSelection()">
-                            <option value="">-- 請先選擇分類 --</option>
-                        </select>
-                        <!-- 管理員專用刪除按鈕 -->
-                        <button id="admin-delete-btn" onclick="deleteSelectedReport()" class="hidden bg-red-900/50 hover:bg-red-700 border border-red-500/50 text-red-200 p-2 rounded-lg transition" title="移除此份報告">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 管理員控制區 -->
-                <div class="pt-6 border-t border-slate-700 space-y-4">
-                    <!-- 登入後顯示的管理資訊 -->
-                    <div id="admin-info" class="hidden flex flex-col space-y-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs text-amber-500 font-bold">管理員模式</span>
-                            <button onclick="toggleAdmin(false)" class="text-[10px] text-amber-200 hover:underline">登出</button>
-                        </div>
-                        <button onclick="toggleModal('password-modal', true)" class="text-[10px] text-slate-400 hover:text-amber-500 text-left transition">更改管理密碼</button>
-                    </div>
-                    
-                    <!-- 管理員登入與資料庫控制 -->
-                    <div id="user-controls" class="space-y-4">
-                        <button id="login-trigger" class="w-full text-left text-sm text-slate-400 hover:text-white flex items-center space-x-2 py-2 transition px-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                            <span>管理員登入</span>
-                        </button>
-                        <div class="grid grid-cols-2 gap-3">
-                            <button onclick="exportDB()" class="text-center text-xs text-slate-400 hover:text-white flex flex-col items-center justify-center space-y-1 py-3 bg-slate-800/50 rounded-lg border border-slate-700/50 transition">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                                <span class="upload">導出數據</span>
-                            </button>
-                            <button onclick="document.getElementById('import-file').click()" class="text-center text-xs text-slate-400 hover:text-white flex flex-col items-center justify-center space-y-1 py-3 bg-slate-800/50 rounded-lg border border-slate-700/50 transition">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0L8 8m4 4V4"></path></svg>
-                                <span class="download">導入數據</span>
-                            </button>
-                        </div>
-                        <input type="file" id="import-file" class="hidden" accept=".json" onchange="importDB(event)">
-                    </div>
-                    
-                    <button id="save-report-btn" class="hidden w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center space-x-2 transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                        <span id="save-btn-text">儲存目前報告</span>
-                    </button>
-                </div>
-                
-                <div class="h-8"></div>
-            </div>
-        </aside>
-
-        <!-- 右側主要區域 -->
-        <main class="relative overflow-y-auto px-8 pt-8 pb-16 no-scrollbar flex flex-col bg-slate-900">
-            <!-- 浮動動作列 -->
-            <div class="no-print sticky top-0 mb-8 z-[60] flex justify-between items-center">
-                <div id="status-tag" class="bg-slate-800/90 backdrop-blur px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-300">
-                    目前狀態: 預覽模式
-                </div>
-                <div class="flex space-x-3">
-                    <button onclick="downloadPDF()" class="bg-white text-slate-900 px-4 py-2 rounded-lg text-sm font-bold shadow-xl flex items-center space-x-2 hover:bg-slate-100 transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a 1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        <span>PDF</span>
-                    </button>
-                    <button onclick="window.print()" class="bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-xl flex items-center space-x-2 hover:bg-slate-600 transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                        <span>列印</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- A4 報表區 -->
-            <div id="report-preview" class="a4-container">
-                <!-- 檔案預覽圖層 -->
-                <div id="file-preview-overlay">
-                    <iframe id="file-viewer" class="w-full h-full border-none"></iframe>
-                    <div id="word-viewer-fallback" class="hidden flex flex-col items-center justify-center h-full text-slate-600 space-y-4">
-                        <svg class="w-16 h-16 text-blue-500" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM12 18H8v-2h4zm5-4H8v-2h9zm0-4H8V8h9zm1-5l-5 5h5z"/></svg>
-                        <p class="font-bold text-lg">這是 Word 格式檔案，不支援直接在線預覽</p>
-                        <button id="download-word-link" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">下載檔案</button>
-                    </div>
-                </div>
-<div id="report-content-wrapper">
-
-<div class="report-header mb-8">
-
-    <div class="flex justify-end mb-3 pr-[1mm]">
-        <div id="document-code-wrapper"
-             class="hidden px-3 py-1 border border-slate-400 rounded-md text-[11px] text-slate-700 bg-slate-50">
-
-            <span class="font-bold tracking-wide">文件編號：</span>
-            <span id="document-code"
-                  class="editable-field outline-none"
-                  oninput="updateDocumentCodeVisibility()"></span>
+            <p class="text-[12px] text-slate-300 font-bold mt-4"></p>
         </div>
-    </div>
+        
+        <nav class="flex-1 py-6 overflow-y-auto">
+            <div class="px-6 mb-4">
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">系統分類目錄</span>
+            </div>
+            <div class="space-y-1" id="nav-tabs"></div>
+        </nav>
 
-    <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 outline-none min-h-[34px]" id="company-name"></h2>
-        <div class="h-1 w-full bg-black my-4"></div>
-        <h3 class="text-xl font-bold tracking-[0.2em] text-gray-800 outline-none" id="report-main-title">安全作業標準程序書</h3>
-        <p class="report-subtitle-en">
-            SAFETY STANDARD OPERATING PROCEDURE
-        </p>
-    </div>
-</div>
-
-                    <table class="report-table w-full text-xs mb-6">
-                        <tr>
-                            <th class="w-1/5">作業種類</th>
-                            <th class="w-1/5">作業方法</th>
-                            <th class="w-1/5">作業名稱</th>
-                            <th class="w-1/5">使用器具</th>
-                            <th class="w-1/5">防護具</th>
-                        </tr>
-                        <tr class="text-center">
-                            <td id="field-type" class="editable-field">--</td>
-                            <td id="field-method" class="editable-field">--</td>
-                            <td id="field-name" class="editable-field font-bold">--</td>
-                            <td id="field-tools" class="editable-field">--</td>
-                            <td id="field-protective" class="editable-field">--</td>
-                        </tr>
-                    </table>
-
-                    <table class="report-table w-full text-xs flex-1">
-                        <thead>
-                            <tr>
-                                <th class="w-[12%]">工作步驟</th>
-                                <th class="w-[28%]">工作方法</th>
-                                <th class="w-[20%]">不安全因素</th>
-                                <th class="w-[20%]">安全措施</th>
-                                <th class="w-[20%]">事故處理</th>
-                            </tr>
-                        </thead>
-                        <tbody id="steps-body">
-                            <tr><td colspan="5" class="text-center py-40 text-gray-300 italic">請在左側搜尋欄位輸入作業名稱開始產出...</td></tr>
-                        </tbody>
-                    </table>
-
-                    <div class="mt-8 border-t-2 border-black pt-4 grid grid-cols-3 text-xs text-gray-700">
-                        <div>
-                            <span class="font-bold">管理單位：</span>
-                            <span id="footer-dept" class="editable-field outline-none"></span>
-                        </div>
-                        <div class="text-center">
-                            <span class="font-bold">製表人：</span>
-                            <span id="footer-author" class="editable-field outline-none"></span>
-                        </div>
-                        <div class="text-right">
-                            <div class="mb-5">
-                                <span class="font-bold">日期：</span>
-                                <span id="footer-date" class="editable-field outline-none"></span>
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
+        <div class="p-4 bg-slate-800/30 space-y-2">
+            <div id="admin-badge" class="hidden px-4 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg mb-2">
+                <p class="text-[10px] text-yellow-500 font-bold text-center">管理員編輯模式</p>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <button onclick="exportJSON()" class="bg-slate-700 text-slate-200 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center space-x-1 hover:bg-slate-600 transition">
+                    <i data-lucide="upload" class="w-3 h-3"></i><span>導出數據</span>
+                </button>
+                <button onclick="document.getElementById('import-input').click()" class="bg-slate-700 text-slate-200 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center space-x-1 hover:bg-slate-600 transition">
+                    <i data-lucide="download" class="w-3 h-3"></i><span>導入數據</span>
+                </button>
+                <input type="file" id="import-input" class="hidden" accept=".json" onchange="importJSON(this)">
             </div>
 
-<div class="mt-10 mb-8 text-center no-print footer-brand">
-    
-    <div class="footer-line"></div>
+            <button class="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-bold flex items-center justify-center space-x-2 hover:bg-blue-500 transition" onclick="exportFullReport()">
+                <i data-lucide="file-up" class="w-4 h-4"></i><span>匯出全年度績效報表 (Excel)</span>
+            </button>
+        </div>
+    </aside>
 
-    <p class="footer-title">
-        © 2026 職業安全衛生室｜職業安全標準程序系統
+    <main class="flex-1 flex flex-col min-w-0">
+        <header class="bg-white px-8 py-5 border-b border-slate-200 flex justify-between items-center shrink-0">
+            <div>
+                <h2 id="current-category-title" class="text-xl font-black text-slate-900 tracking-tight leading-none">載入中...</h2>
+                <div class="flex items-center mt-2">
+                    <input type="text" id="year-input-field" class="year-input" value="2026年度 (115年)" 
+                           onclick="this.select()" 
+                           onblur="handleYearFormat(this)"
+                           onkeydown="if(event.key === 'Enter') handleYearFormat(this)">
+                </div>
+            </div>
+            <div class="flex items-center space-x-3 no-print">
+                <button id="save-logout-btn" onclick="saveAndLogout()" class="hidden flex items-center space-x-2 px-5 py-2.5 bg-green-600 text-white rounded-full text-sm font-bold transition shadow-sm hover:bg-green-700">
+                    <i data-lucide="save" class="w-4 h-4"></i><span>儲存並登出系統</span>
+                </button>
+                <button onclick="printCurrentReport()" class="flex items-center space-x-2 px-5 py-2.5 bg-white border border-slate-200 rounded-full text-sm font-bold text-slate-700 transition shadow-sm hover:shadow-md">
+                    <i data-lucide="printer" class="w-4 h-4 text-slate-600"></i><span>列印報告</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="p-4 flex-1 overflow-hidden flex flex-col">
+            <div class="table-container">
+                <table class="w-full text-left border-separate border-spacing-0" id="main-table">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 text-[10px] font-bold uppercase tracking-widest">
+                            <th class="px-2 py-4 sticky-col-num border-b">編號</th>
+                            <th class="px-3 py-3 sticky-col-name border-b">績效指標內容</th>
+                            <th class="px-3 py-3 min-w-[310px] border-b border-l">計算方式</th>
+                            <th class="px-1.5 py-3 text-center min-w-[56px] border-b border-l">時程規劃</th>
+                            <th class="px-1.5 py-3 text-center min-w-[58px] border-b border-l">目標值</th>
+                            <th class="px-1 py-3 text-center border-b border-l bg-blue-50/30 text-blue-600 min-w-[54px]">1月</th>
+                            <th class="px-1 py-3 text-center border-b border-l bg-blue-50/30 text-blue-600 min-w-[54px]">2月</th>
+                            <th class="px-1 py-3 text-center border-b border-l bg-blue-50/30 text-blue-600 min-w-[54px]">3月</th>
+                            <th class="px-1 py-3 text-center border-b border-l bg-blue-50/30 text-blue-600 min-w-[54px]">4月</th>
+                            <th class="px-1 py-3 text-center border-b border-l bg-blue-50/30 text-blue-600 min-w-[54px]">5月</th>
+                            <th class="px-1 py-3 text-center border-b border-l bg-blue-50/30 text-blue-600 min-w-[54px]">6月</th>
+                            <th class="px-1 py-3 text-center border-b border-l bg-blue-50/30 text-blue-600 min-w-[54px]">7月</th>
+                            <th class="px-1 py-3 text-center border-b border-l bg-blue-50/30 text-blue-600 min-w-[54px]">8月</th>
+                            <th class="px-1 py-3 text-center border-b border-l bg-blue-50/30 text-blue-600 min-w-[54px]">9月</th>
+                            <th class="px-1 py-3 text-center border-b border-l bg-blue-50/30 text-blue-600 min-w-[54px]">10月</th>
+                            <th class="px-1 py-3 text-center border-b border-l bg-blue-50/30 text-blue-600 min-w-[54px]">11月</th>
+                            <th class="px-1 py-3 text-center border-b border-l bg-blue-50/30 text-blue-600 min-w-[54px]">12月</th>
+                            <th id="admin-header-action" class="hidden px-2 py-4 text-center border-b border-l text-red-500">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="bg-white"></tbody>
+                </table>
+            </div>
+            <div id="admin-add-section" class="hidden mt-4">
+                <button onclick="addNewRow()" class="flex items-center space-x-2 px-4 py-2 border-2 border-dashed border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition font-bold text-sm">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    <span>新增績效指標項目</span>
+                </button>
+            </div>
+        </div>
+<footer class="system-footer-light">
+
+    <div class="footer-line-light"></div>
+
+    <p class="footer-title-light">
+        © 2026 職業安全衛生室｜職業安全績效管理系統
     </p>
 
-    <p class="footer-dev">
+    <p class="footer-dev-light">
         Developed by Sam Sun
     </p>
 
-</div>
-        </main>
+</footer>  
+    </main>
+
+    <!-- 排序選單 -->
+    <div id="sort-menu" class="sort-menu no-print">
+        <button id="move-up-btn" onclick="moveRow('up')"><i data-lucide="arrow-up" class="w-3 h-3 inline mr-2"></i>上移項目</button>
+        <button id="move-down-btn" onclick="moveRow('down')"><i data-lucide="arrow-down" class="w-3 h-3 inline mr-2"></i>下移項目</button>
     </div>
 
-    <!-- 彈窗 -->
-    <div id="login-modal" onclick="closeLoginModalOutside(event)" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-[100]">
-        <div onclick="event.stopPropagation()" class="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-96 shadow-2xl">
-            <h3 class="text-xl font-bold text-white mb-2">管理員驗證</h3>
-            <p class="text-slate-400 text-sm mb-6">請輸入系統訪問密碼以進入編輯模式</p>
-            <input type="password" id="admin-password" placeholder="••••" 
-                   onkeyup="if(event.key === 'Enter') verifyAdmin()"
-                   class="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white text-center text-2xl tracking-widest outline-none focus:ring-2 focus:ring-blue-500 mb-6">
-            <div class="flex space-x-3">
-                <button onclick="toggleModal('login-modal', false)" class="flex-1 py-3 text-slate-400 font-medium">取消</button>
-                <button onclick="verifyAdmin()" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-900/40 border-none">確認</button>
+    <!-- 管理員驗證彈窗 -->
+    <div id="login-modal" onclick="closeLoginModalOutside(event)" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+        <div onclick="event.stopPropagation()" class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="p-8">
+                <div id="login-view">
+                    <div class="flex flex-col items-center text-center mb-6">
+                        <div class="bg-slate-100 p-3 rounded-full mb-4">
+                            <i data-lucide="lock-keyhole" class="w-8 h-8 text-slate-600"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-900">管理員權限驗證</h3>
+                        <p class="text-sm text-slate-500 mt-1">請輸入系統存取密碼以解鎖編輯欄位</p>
+                    </div>
+                    <div class="space-y-4">
+                        <input type="password" id="login-password" 
+                               class="w-full px-4 py-3 bg-slate-100 border-none rounded-xl focus:ring-2 focus:ring-blue-500 transition outline-none text-center text-xl tracking-[0.5em]" 
+                               placeholder="••••"
+                               onkeyup="if(event.key === 'Enter') attemptLogin()">
+                        <div class="flex space-x-2">
+                            <button onclick="closeLoginModal()" class="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition text-sm">取消</button>
+                            <button onclick="attemptLogin()" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition text-sm">解鎖編輯</button>
+                        </div>
+                        <button onclick="togglePasswordView(true)" class="w-full text-xs text-slate-400 hover:text-blue-500 transition py-1">需要修改管理密碼？</button>
+                        <p id="login-error" class="text-center text-red-500 text-xs font-bold hidden">密碼錯誤，請重新輸入</p>
+                    </div>
+                </div>
+
+                <div id="change-pwd-view" class="hidden">
+                    <div class="flex flex-col items-center text-center mb-6">
+                        <div class="bg-yellow-50 p-3 rounded-full mb-4">
+                            <i data-lucide="key-round" class="w-8 h-8 text-yellow-600"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-900">修改管理密碼</h3>
+                        <p class="text-sm text-slate-500 mt-1">需先輸入舊密碼驗證身份</p>
+                    </div>
+                    <div class="space-y-3">
+                        <input type="password" id="old-password" class="w-full px-4 py-2 bg-slate-100 border-none rounded-lg focus:ring-2 focus:ring-blue-500 transition outline-none text-sm" placeholder="目前的密碼">
+                        <input type="password" id="new-password" class="w-full px-4 py-2 bg-slate-100 border-none rounded-lg focus:ring-2 focus:ring-blue-500 transition outline-none text-sm" placeholder="設定新密碼">
+                        <div class="flex space-x-2 pt-2">
+                            <button onclick="togglePasswordView(false)" class="flex-1 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold hover:bg-slate-200 transition text-xs">返回</button>
+                            <button onclick="handleChangePassword()" class="flex-1 py-2 bg-yellow-500 text-white rounded-lg font-bold hover:bg-yellow-600 transition text-xs">確認修改</button>
+                        </div>
+                        <p id="pwd-change-error" class="text-center text-red-500 text-[10px] font-bold hidden"></p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div id="password-modal" onclick="closePasswordModalOutside(event)" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-[100]">
-        <div onclick="event.stopPropagation()" class="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-96 shadow-2xl">
-            <h3 class="text-xl font-bold text-white mb-2">修改管理密碼</h3>
-            <p class="text-slate-400 text-sm mb-4">請輸入舊密碼與新密碼進行修改</p>
-            <div class="space-y-4 mb-6">
-                <input type="password" id="old-password" placeholder="目前密碼" 
-                       class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:ring-2 focus:ring-amber-500">
-                <input type="password" id="new-password" placeholder="新密碼" 
-                       onkeyup="if(event.key === 'Enter') changeAdminPassword()"
-                       class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:ring-2 focus:ring-amber-500">
+    <!-- 附件管理彈窗 -->
+    <div id="attachment-modal" onclick="closeAttachmentModalOutside(event)" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4">
+        <div onclick="event.stopPropagation()" class="bg-white w-full max-w-[440px] max-h-[90vh] rounded-[2.5rem] shadow-2xl overflow-y-auto p-8 relative animate-in fade-in zoom-in duration-200">
+            <button onclick="closeAttachmentModal()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+            <div class="flex items-center space-x-3 mb-6">
+                <i data-lucide="link" class="w-6 h-6 text-blue-600 rotate-45"></i>
+                <h3 id="attachment-modal-title" class="text-xl font-bold text-slate-800 tracking-tight">附件與快速填充</h3>
             </div>
-            <div class="flex space-x-3">
-                <button onclick="toggleModal('password-modal', false)" class="flex-1 py-2 text-slate-400">取消</button>
-                <button onclick="changeAdminPassword()" class="flex-1 py-2 bg-amber-600 text-white rounded-xl font-bold border-none">確認修改</button>
+            <div class="mb-6">
+                <label class="text-[12px] font-bold text-slate-400 mb-2 block">目前選擇</label>
+                <div class="bg-slate-50 border border-slate-100 rounded-xl px-5 py-4 flex justify-between items-center">
+                    <span id="target-label-display" class="text-slate-700 font-medium">載入中...</span>
+                    <button id="delete-single-attachment-btn" onclick="deleteSingleAttachment()" class="hidden text-red-400 hover:text-red-600 transition p-1" title="刪除此筆附件">
+                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                    </button>
+                </div>
             </div>
+            <div class="mb-8">
+                <label class="text-[12px] font-bold text-slate-400 mb-2 block">連結電腦 PDF / PNG / JPG 檔案</label>
+                <div class="flex items-center space-x-3">
+                    <div id="upload-status-box" 
+                         onclick="document.getElementById('file-input').click()"
+                         class="flex-1 border-2 border-dashed border-blue-200 bg-blue-50/30 rounded-2xl py-5 px-4 flex items-center justify-center space-x-2 cursor-pointer hover:bg-blue-50 transition group relative">
+                        <i id="upload-icon-status" data-lucide="cloud-upload" class="w-5 h-5 text-blue-500"></i>
+                        <span id="upload-text-status" class="text-blue-600 font-bold text-sm">點擊或拖移檔案至此</span>
+                    </div>
+                    <button onclick="viewCurrentFile()" id="view-file-btn" class="hidden h-[60px] w-[60px] flex items-center justify-center bg-slate-50 border border-slate-100 rounded-2xl text-slate-400 hover:text-blue-600 transition">
+                        <i data-lucide="external-link" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <input type="file" id="file-input" class="hidden" accept=".pdf,.png,.jpg,.jpeg" multiple onchange="handleFileUpload(this)">
+                <div id="attachment-file-list" class="mt-3 space-y-2 max-h-[260px] overflow-y-auto pr-1"></div>
+            </div>
+            <hr id="attachment-admin-divider" class="border-slate-100 mb-6">
+            <div id="attachment-admin-tools" class="mb-8">
+                <label class="text-[12px] font-bold text-slate-400 mb-3 block">快速大量填充 (批次操作)</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="batchApplyToFile()" class="bg-[#1e293b] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-700 transition">
+                        將此檔案套用全年度
+                    </button>
+                    <button onclick="batchClearRowAttachments()" class="bg-[#fff1f2] text-[#f43f5e] py-3.5 rounded-xl text-[13px] font-bold hover:bg-red-100 transition border border-red-50">
+                        清除此指標所有附件
+                    </button>
+                </div>
+            </div>
+            <button onclick="closeAttachmentModal()" class="w-full py-4 bg-[#2563eb] text-white rounded-[1.2rem] font-bold text-base shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition">
+                完成並關閉
+            </button>
         </div>
-    </div>
-
-    <div id="loading" class="hidden fixed inset-0 bg-slate-950/90 flex flex-col items-center justify-center z-[200]">
-        <div class="relative w-24 h-24">
-            <div class="absolute inset-0 border-4 border-blue-500/20 rounded-full"></div>
-            <div class="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-        <p class="mt-8 text-blue-400 font-bold text-lg animate-pulse" id="loading-text">AI 正在撰寫安全作業標準...</p>
-    </div>
-
-    <div id="toast" class="fixed bottom-10 right-10 transform translate-y-20 opacity-0 transition-all duration-300 z-[300] bg-white text-slate-900 px-6 py-3 rounded-xl shadow-2xl font-bold flex items-center space-x-3">
-        <span id="toast-icon" class="text-green-500">✓</span>
-        <span id="toast-msg">操作成功</span>
     </div>
 
     <script>
-const apiKey = "";
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'osspis-pro';
+        // 初始數據定義
+        let appData = {
+            plan: [
+                { id: "1", name: "工作場所巡視結果符合率", content: "巡視結果符合率% =〔1-(缺點件數 / 總件數) 〕x100%", schedule: "適時", target: "90%" },
+                { id: "2", name: "職業安全衛生教育訓練", content: "新進人員到職後實施實施3小時安全衛生教育訓練。", schedule: "適時", target: "100%" },
+                { id: "3", name: "職業安全衛生委員會或管審會", content: "依職業安全衛生管理辦法第12條規定，職業安全衛生委員會(以下簡稱委員會)應每3個月至少開會1次，辦理審議、協調及建議安全衛生相關事項。", schedule: "季", target: "100%" },
+                { id: "4", name: "職業安全衛生工作守則", content: "依職業安全衛生法相關規定，應訂定職業安全衛生工作守則，並經公告及勞動檢查機構備查；其內容應適時檢討與修訂，並確保員工知悉與遵守。", schedule: "適時", target: "100%" },
+                { id: "5", name: "安衛相關建議提案改善件數", content: "提案改善率% = 〔1-(逾期件數 / 總件數) 〕x100 %", schedule: "適時", target: "90%" },
+                { id: "6", name: "虛驚事故", content: "虛驚事件改善率% = 〔1-(逾期件數 / 總件數) 〕x100%", schedule: "適時", target: "100%" },
+                { id: "7", name: "職災事件", content: "職災事件改善率% = 〔1-(逾期件數 / 總件數) 〕x100%", schedule: "適時", target: "100%" },
+                { id: "8", name: "職災事故調查", content: "職災事故調查完成率% = 〔1-(逾期未完成調查件數 / 職災事故總件數) 〕x100%", schedule: "適時", target: "100%" },
+                { id: "9", name: "安衛證照設置符合率", content: "環安衛證照設置符合率 = 實際證照數 / 法令規定證照數 x100%", schedule: "適時", target: "100%" },
+                { id: "10", name: "人員證照相關", content: "協助同仁於證照有效期限滿前辦理回訓報名", schedule: "適時", target: "100%" },
+                { id: "11", name: "安全衛生緊急應變計畫演練", content: "為鑑別可能發生之災害事故或緊急狀況，因應、防止、或降低此類事件所可能造成的人員傷害、財產損失與工作環境影響，定期規劃實施。", schedule: "年", target: "100%" },
+                { id: "12", name: "消防防護計畫", content: "一定規模以上之建築物，應由管理權人，遴用防火管理人，責其製定消防防護計畫，報請消防機關核備，並依該計畫執行有關防火管理上必要之業務。 地下建築物或中央主管機關指定之建築物 ，其管理權有分屬時，各管理權人應協議製定共同消防防護計畫，並報請消防機關核備。", schedule: "月", target: "100%" },
+                { id: "13", name: "自動檢查計畫", content: "依職業安全衛生法第 23 條及職業安全衛生管理辦法第 79 條規定，定期更新安全衛生自動檢查計畫。", schedule: "月", target: "100%" },
+                { id: "14", name: "作業安全管理", content: "高風險作業現場安全查核符合率﹪＝（現場查核符合件數 / 總抽查件數）×100﹪", schedule: "月", target: "100%" },
+                { id: "15", name: "變更管理風險評估", content: "變更管理 (MOC) 風險評估完成率﹪＝（已完成風險評估之變更案 / 總變更申請案）×100﹪", schedule: "適時", target: "100%" },
+                { id: "16", name: "安衛自動檢查檢核符合率", content: "安衛自動檢查檢核符合率 = 累積合格單位數/受檢單位數x100%", schedule: "適時", target: "90%" },
+                { id: "17", name: "定期實施一般健康檢查", content: "雇主對在職勞工，應依下列規定，定期實施一般健康檢查： 一、年滿六十五歲者，每年檢查一次。 二、四十歲以上未滿六十五歲者，每三年檢查一次。· 三、未滿四十歲者，每五年檢查一次。", schedule: "年", target: "100%" },
+                { id: "18", name: "特殊作業人員檢查計畫", content: "雇主使勞工從事第二條規定之特別危害健康作業，應每年或於變更其作業時，依第十六條附表十所定項目，實施特殊健康檢查。", schedule: "年", target: "100%" },
+                { id: "19", name: "員工健康風險評估", content: "針對特殊作業人員，安排年度特檢並追蹤異常指標，防止職業病發生。", schedule: "年", target: "100%" },
+                { id: "20", name: "辦理臨場醫護諮詢服務", content: "事業單位勞工人數在五十人以上未達三百人者，應視其規模及性質，依規定每年實施4-6次，特約醫護人員臨場諮詢服務，服務時並不直接執行醫療行為。", schedule: "適時", target: "100%" },
+                { id: "21", name: "危害性化學品清單及SDS安全資料表", content: "製造者、輸入者、供應者或雇主，應依實際狀況檢討安全資料表內容之正確性，適時更新，並至少每三年檢討一次。 前項安全資料表更新之內容、日期、版次等更新紀錄，應保存三年。", schedule: "月", target: "100%" },
+                { id: "22", name: "安全作業標準", content: "依職業安全衛生施行細則第31條規定，應擬訂安全衛生作業標準並定期更新，且依標準程序進行作業。", schedule: "月", target: "100%" },
+                { id: "23", name: "有機溶劑儲藏室危險區域劃分", content: "定期更新危險區域劃分平面圖等資料供主管機關核備", schedule: "季", target: "100%" },
+                { id: "24", name: "承攬、採購、變更管理", content: "依職業安全衛生法施行細則第三十一條規定，執行工作環境或作業危害之辨識、評估及控制、採購管理、承攬管理、變更管理與緊急應變措施等職業安全衛生事項。", schedule: "適時", target: "100%" },
+                { id: "25", name: "承攬商違規改善追蹤", content: "承攬商違規改善追蹤率﹪＝（承攬商違規已改善件數 / 總違規件數）×100﹪", schedule: "適時", target: "100%" },
+                { id: "26", name: "主管機關函文公告", content: "將主管機關函文公告並通報。", schedule: "適時", target: "100%" }
+            ],
+            iso: [
+                { id: "1", name: "職安風險評估作業盤查", content: "依ISO 45001安全衛生法規及職業安全衛生管理系統相關規範等要求，建立、實施及維持風險評估管理計畫。", schedule: "適時", target: "100%" },
+                { id: "2", name: "職安風險與機會評估", content: "依ISO 45001安全衛生法規及職業安全衛生管理系統相關規範等要求，執行工作環境或作業危害的辨識與控制。", schedule: "適時", target: "100%" },
+                { id: "3", name: "職業安全衛生法規鑑別", content: "依法規要求職安承辦人員應定期每月執行法規鑑別一次，以評估適用法規之符合性。", schedule: "月", target: "100%" },
+                { id: "4", name: "職業安全衛生相關管理文件", content: "依職業安全衛生相關法規及ISO 45001管理系統要求，建立、維護及管制職業安全衛生相關文件與紀錄，確保文件經適當審查、核准、發行、修訂及保存，並定期檢討其適用性與有效性。", schedule: "適時", target: "100%" },
+                { id: "5", name: "勞工參與及諮詢機制", content: "依職業安全衛生法及ISO 45001管理系統要求，建立勞工參與及諮詢機制，使勞工或其代表能參與職業安全衛生政策、風險評估、事故調查及改善措施等相關事項之討論，並提供意見回饋，且確保其參與過程之適當紀錄與追蹤。", schedule: "適時", target: "100%" },
+                { id: "6", name: "職業安全績效指標量測", content: "依規定執行職業安全衛生管理計畫之查(稽)核與績效，予以量測職業安全衛生工作推動之成效。", schedule: "適時", target: "100%" },
+                { id: "7", name: "職安管理系統管理審查報告", content: "依ISO 45001職業安全衛生管理系統規定將職業安全衛生相關執行事項紀錄於管理審查報告中。", schedule: "適時", target: "100%" },
+                { id: "8", name: "ISO45001內外部稽核", content: "定期執行ISO 45001職業安全衛生管理系統之驗證審查。", schedule: "年", target: "100%" }
+            ],
+            protect: [
+                { id: "1", name: "人因性危害預防計畫", content: "依去年度健康檢查報告分析肌肉骨骼之傷病調查與管控追蹤紀錄。", schedule: "年", target: "100%" },
+                { id: "2", name: "異常工作負荷促發疾病預防", content: "依異常工作負荷風險評估對照表，評估工作負荷量是否造成員工過勞。", schedule: "年", target: "100%" },
+                { id: "3", name: "執行職務遭受不法侵害預防", content: "依職場不法侵害預防措施查核及評估表以及主管層級職場不法侵害行為自我檢視檢核表調查是否有發生職場暴利之情事。", schedule: "年", target: "100%" },
+                { id: "4", name: "母性健康保護計畫", content: "依法規定使妊娠中的員工在分娩後，在工作獲致合法合理的安置與管理。", schedule: "年", target: "100%" }
+            ],
+            passive: [
+                { id: "1", name: "失能災害頻率 (FR)", content: "失能災害頻率（FR）＝失能傷害人次數×1,000,000 / 總經歷工時", schedule: "適時", target: "<0.79" },
+                { id: "2", name: "失能災害嚴重率 (SR)", content: "失能災害嚴重率（SR）＝總失能損失日數×1,000,000 / 總經歷工時", schedule: "適時", target: "<32" }
+            ],
+            monitor: [
+                { id: "1", name: "作業環境監測計畫", content: "每半年委託監測機構，執行作業環境監測(有機溶劑揮發/二氧化碳/噪音/照度)。", schedule: "半年", target: "100%" },
+                { id: "2", name: "作業環境監測申報", content: "每半年於作業環境監測規劃實施前須先向當地主管機關進行核備作業。", schedule: "半年", target: "100%" },
+                { id: "3", name: "職業災害定期申報", content: "每月10號前向人事單位索取整體工時，於工作者安全衛生履歷智能雲線上系統完成申報作業。", schedule: "月", target: "100%" },
+                { id: "4", name: "單位及人員設置報備", content: "每月於工作者安全衛生履歷智能雲線上申報確認核備之人員。", schedule: "月", target: "100%" },
+                { id: "5", name: "急救箱定期檢查", content: "依勞工健康保護規則第15條規定，急救藥品與器材，應置於適當固定處所及保持清潔，至少每六個月定期檢查。 對於被污染或失效之物品，應隨時予以更換及補充。", schedule: "月", target: "100%" },
+                { id: "6", name: "AED自動體外心臟去顫器檢查", content: "依訂定之年度自動檢查計畫實施AED自動體外心臟去顫器檢查並紀錄備查。", schedule: "月", target: "100%" },
+                { id: "7", name: "化學品進出使用量統計", content: "紀錄有機溶劑進出使用量予以核算空汙申報量之統計。", schedule: "月", target: "100%" },
+                { id: "8", name: "危險物有害物分級管理申報", content: "雇主使勞工製造、處置或使用之化學品，符合國家標準CNS15030化學品分類，具有健康危害者，應評估其危害及暴露程度，劃分風險等級，並採取對應之分級管理措施。", schedule: "月", target: "100%" },
+                { id: "9", name: "高風險作業許可管理", content: "依職業安全衛生相關法規規定，對於動火、受限空間、高處作業等高風險作業，應於作業前完成申請、審查及必要之通報或申報程序，並經核准後始得作業。", schedule: "適時", target: "100%" },
+                { id: "10", name: "幅射防護實化申報", content: "所有輻射設備的申請、使用、異動變更、停用以及狀態查詢，都必須透過輻防雲化系統進行電子化申辦及查詢。", schedule: "月", target: "100%" },
+                { id: "11", name: "空汙定期申報", content: "空汙定期申報，溶劑變更主動回報，確認100%合格。", schedule: "季", target: "100%" },
+                { id: "12", name: "汙水定期申報", content: "生活廢水及下水道使用申報，確認100%合格。", schedule: "半年", target: "100%" },
+                { id: "13", name: "土壤及地下汙水申報", content: "土壤及地下汙水定期申報，確認100%合格", schedule: "月", target: "100%" },
+                { id: "14", name: "緊急發電機設備檢查", content: "依法規規定應每月定期實施檢查及試運轉一次，檢查內容如下：一、本體與固定螺栓有無損傷鬆動、環境通風及雜物清理。二、燃油(需80%以上)、機油與冷卻水之液位及滲漏檢查。三、蓄電池電壓、液位、接頭狀態及充電機功能。四、儀表指示、ATS 選鈕位置及相關電氣迴路確認。五、實施空載試運轉，確認運轉異音、震動及電壓頻率穩定性。", schedule: "月", target: "100%" },
+                { id: "15", name: "防爆電氣設備檢查", content: "依法規規定應每月依下列規定定期實施檢查一次，檢查內容：一、本體有無損傷、變形。二、配管、配線等有無損傷、變形及異常狀況。三、其他保持防爆性能之必要事項。", schedule: "月", target: "100%" },
+                { id: "16", name: "局部排氣裝置檢查", content: "雇主對局部排氣裝置、空氣清淨裝置及吹吸型換氣裝置應每年依下列規定定期實施檢查一次： 一、氣罩、導管及排氣機之磨損、腐蝕、凹凸及其他損害之狀況及程度。 二、導管或排氣機之塵埃聚積狀況。 三、排氣機之注油潤滑狀況。", schedule: "年", target: "100%" },
+                { id: "17", name: "個人防護具檢查", content: "雇主供給勞工使用之個人防護具或防護器具，應每季依下列規定定期實施檢查一次： 一、保持清潔，並予必要之消毒。 二、經常檢查，保持其性能，不用時並妥予保存。", schedule: "季", target: "100%" },
+                { id: "18", name: "消防安全檢查", content: "於各類場所消防安全設備設置標準規定之乙類場所，每年實施一次。", schedule: "年", target: "100%" },
+                { id: "19", name: "機電安全檢查", content: "雇主對高低壓電氣設備，應於每年依下列規定定期實施檢查一次：一、高低壓受電盤及分電盤 (含各種電驛、儀表及其切換開關等) 之動作試驗。二、高低壓用電設備絕緣情形、接地電阻及其他安全設備狀況。三、自備屋外高低壓配電線路情況。", schedule: "年", target: "100%" },
+                { id: "20", name: "建築公共安全檢查", content: "建築公共安全類別工業、倉儲類未達一千平方公尺以上檢查及申報頻率為每兩年一次。", schedule: "2年", target: "100%" }
+            ]
+        };
+
+        const titles = { plan: "職業安全衛生管理計畫", iso: "ISO 45001 管理審查", protect: "四大保護計畫", passive: "被動性指標", monitor: "自主監測及主動回報" };
+        const icons = { plan: "clipboard-list", iso: "award", protect: "user-check", passive: "activity", monitor: "gauge" };
+
+        let currentTab = 'plan';
+        let tableDataStore = {}; 
+        let attachmentsStore = {}; 
+        let isAdmin = false;
+        let activeAttachmentTarget = null; 
+        let activeSortRowIdx = null; // 當前準備排序的行索引
+
+        // --- IndexedDB ---
+const DB_NAME = "OSPMS_DB";
+const DB_VERSION = 1;
+const STORE_KEY = "main_data";
 
 const DEFAULT_ADMIN_PASSWORD = "1068";
 const MASTER_RECOVERY_CODE = "SAM-SUN-CORE-RECOVERY";
 
-let db;
-let isAdmin = false;
-let currentAdminPassword = DEFAULT_ADMIN_PASSWORD;
-        let currentLoadedReportId = null;
-        
-        // 預設分類
-        let categories = ["機械加工類", "化學品作業類", "電氣工程類", "物流倉儲類", "一般通用類"];
-
-        async function initDB() {
+        function openDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open(appId, 2); 
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
                 request.onupgradeneeded = (e) => {
                     const db = e.target.result;
-                    if (!db.objectStoreNames.contains('standards')) {
-                        db.createObjectStore('standards', { keyPath: 'id', autoIncrement: true });
-                    }
-                    if (!db.objectStoreNames.contains('settings')) {
-                        db.createObjectStore('settings', { keyPath: 'key' });
-                    }
+                    if (!db.objectStoreNames.contains(STORE_KEY)) db.createObjectStore(STORE_KEY);
                 };
-                request.onsuccess = (e) => {
-                    db = e.target.result;
-                    loadSettings().then(() => {
-                        renderCategories();
-                        updateReportsDropdown();
-                        setupDragAndDrop();
-                    });
-                    setCurrentDate();
-                    resolve(db);
-                };
+                request.onsuccess = (e) => resolve(e.target.result);
+                request.onerror = (e) => reject("DB Open Error");
             });
         }
 
-        async function loadSettings() {
-            return new Promise((resolve) => {
-                const tx = db.transaction('settings', 'readonly');
-                const store = tx.objectStore('settings');
-                
-                const pwdReq = store.get('adminPassword');
-                pwdReq.onsuccess = () => { if (pwdReq.result) currentAdminPassword = pwdReq.result.value; };
-                
-                const catReq = store.get('categories');
-                catReq.onsuccess = () => { 
-                    if (catReq.result) categories = catReq.result.value;
-                    resolve();
-                };
-            });
-        }
-
-        async function saveCategoriesToDB() {
-            const tx = db.transaction('settings', 'readwrite');
-            tx.objectStore('settings').put({ key: 'categories', value: categories });
-        }
-
-        function renderCategories() {
-            const select = document.getElementById('category-select');
-            const currentValue = select.value;
-            select.innerHTML = '';
-            categories.forEach(cat => {
-                const opt = document.createElement('option');
-                opt.value = cat;
-                opt.textContent = cat;
-                select.appendChild(opt);
-            });
-            if (categories.includes(currentValue)) {
-                select.value = currentValue;
-            }
-        }
-
-        // 拖放功能設置
-        function setupDragAndDrop() {
-            const dropZone = document.getElementById('drop-zone');
-            const dragHint = document.getElementById('drag-hint');
-
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, preventDefaults, false);
-            });
-
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-
-            ['dragenter', 'dragover'].forEach(eventName => {
-                dropZone.addEventListener(eventName, () => {
-                    if(isAdmin) {
-                        dropZone.classList.add('drag-over');
-                        dragHint.classList.remove('hidden');
-                    }
-                }, false);
-            });
-
-            ['dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, () => {
-                    dropZone.classList.remove('drag-over');
-                    dragHint.classList.add('hidden');
-                }, false);
-            });
-
-            dropZone.addEventListener('drop', (e) => {
-                if(!isAdmin) return;
-                const dt = e.dataTransfer;
-                const files = dt.files;
-                if(files.length > 0) {
-                    processFile(files[0]);
-                }
-            }, false);
-        }
-
-        function handleFileUpload(e) {
-            const file = e.target.files[0];
-            if(file) processFile(file);
-        }
-
-        function processFile(file) {
-            const ext = file.name.split('.').pop().toLowerCase();
-            if(!['pdf', 'doc', 'docx'].includes(ext)) {
-                return showToast("僅支援 PDF 或 Word 格式", "error");
-            }
-
-            const reader = new FileReader();
-            document.getElementById('loading-text').innerText = "正在上傳檔案...";
-            document.getElementById('loading').classList.remove('hidden');
-
-            reader.onload = function(e) {
-                const fileData = e.target.result;
-                const report = {
-                    name: file.name,
-                    category: document.getElementById('category-select').value,
-                    timestamp: Date.now(),
-                    isExternalFile: true,
-                    fileType: ext,
-                    fileContent: fileData
-                };
-
-                const tx = db.transaction('standards', 'readwrite');
-                tx.objectStore('standards').add(report);
-                tx.oncomplete = () => {
-                    document.getElementById('loading').classList.add('hidden');
-                    showToast("檔案上傳成功");
-                    updateReportsDropdown();
-                };
-            };
-            reader.readAsDataURL(file);
-        }
-
-        // 分類管理功能
-        function addCategory() {
-            if (!isAdmin) return;
-            const name = prompt("請輸入新分類名稱：");
-            if (name && name.trim()) {
-                if (categories.includes(name.trim())) return showToast("該分類已存在", "error");
-                categories.push(name.trim());
-                saveCategoriesToDB();
-                renderCategories();
-                showToast("分類已新增");
-            }
-        }
-
-        function editCategory() {
-            if (!isAdmin) return;
-            const oldName = document.getElementById('category-select').value;
-            if (!oldName) return;
-            const newName = prompt("請輸入新的分類名稱：", oldName);
-            if (newName && newName.trim() && newName !== oldName) {
-                const index = categories.indexOf(oldName);
-                if (index !== -1) {
-                    categories[index] = newName.trim();
-                    saveCategoriesToDB();
-                    renderCategories();
-                    showToast("分類名稱已修改");
-                }
-            }
-        }
-
-        function removeCategory() {
-            if (!isAdmin) return;
-            const name = document.getElementById('category-select').value;
-            if (!name) return;
-            if (confirm(`確定要刪除「${name}」分類嗎？\n注意：這不會刪除該分類下的報告，但該些報告將暫時無法在選單中被找到。`)) {
-                categories = categories.filter(c => c !== name);
-                saveCategoriesToDB();
-                renderCategories();
-                updateReportsDropdown();
-                showToast("分類已刪除", "error");
-            }
-        }
-
-        function setCurrentDate() {
-            const now = new Date();
-            const dateStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
-            const dateEl = document.getElementById('footer-date');
-            if (dateEl) dateEl.innerText = dateStr;
-        }
-
-        function toggleModal(id, show) {
-            document.getElementById(id).classList.toggle('hidden', !show);
-            if(show && id === 'login-modal') {
-                setTimeout(() => document.getElementById('admin-password').focus(), 100);
-            }
-            if(show && id === 'password-modal') {
-                document.getElementById('old-password').value = "";
-                document.getElementById('new-password').value = "";
-                setTimeout(() => document.getElementById('old-password').focus(), 100);
-            }
-        }
-
-        function closeLoginModalOutside(event) {
-    toggleModal('login-modal', false);
-}
-
-function closePasswordModalOutside(event) {
-    toggleModal('password-modal', false);
-}
-
-async function verifyAdmin() {
-    const pwd = document.getElementById('admin-password').value;
-
-    if (pwd === MASTER_RECOVERY_CODE) {
-        const tx = db.transaction('settings', 'readwrite');
-        tx.objectStore('settings').put({
-            key: 'adminPassword',
-            value: DEFAULT_ADMIN_PASSWORD
-        });
-
-        currentAdminPassword = DEFAULT_ADMIN_PASSWORD;
-        toggleAdmin(false);
-        toggleModal('login-modal', false);
-
-        document.getElementById('admin-password').value = "";
-        showToast("管理員設定已恢復，請重新登入後再修改新密碼。");
-        return;
-    }
-
-    if (pwd === currentAdminPassword) {
-        toggleAdmin(true);
-        toggleModal('login-modal', false);
-    } else {
-        showToast("驗證密碼錯誤", "error");
-    }
-
-    document.getElementById('admin-password').value = "";
-}
-
-        async function changeAdminPassword() {
-            const oldPwdInput = document.getElementById('old-password').value;
-            const newPwd = document.getElementById('new-password').value.trim();
-            
-            if (oldPwdInput !== currentAdminPassword) {
-                return showToast("目前密碼不正確", "error");
-            }
-            
-            if (!newPwd) {
-                return showToast("新密碼不可為空", "error");
-            }
-            
-            const tx = db.transaction('settings', 'readwrite');
-            tx.objectStore('settings').put({ key: 'adminPassword', value: newPwd });
-            currentAdminPassword = newPwd;
-            toggleModal('password-modal', false);
-            document.getElementById('old-password').value = "";
-            document.getElementById('new-password').value = "";
-            showToast("密碼修改成功");
-        }
-
-        function toggleAdmin(status) {
-            isAdmin = status;
-            document.getElementById('admin-info').classList.toggle('hidden', !isAdmin);
-            document.getElementById('category-admin-tools').classList.toggle('hidden', !isAdmin);
-            
-            document.getElementById('login-trigger').classList.toggle('hidden', isAdmin);
-            document.getElementById('save-report-btn').classList.toggle('hidden', !isAdmin);
-            document.getElementById('admin-delete-btn').classList.toggle('hidden', !isAdmin);
-            document.getElementById('status-tag').innerText = isAdmin ? "目前狀態: 管理員編輯模式" : "目前狀態: 預覽模式";
-            document.getElementById('status-tag').className = isAdmin 
-                ? "bg-amber-500/20 backdrop-blur px-4 py-2 rounded-full border border-amber-500/50 text-xs text-amber-500 font-bold"
-                : "bg-slate-800/80 backdrop-blur px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-300";
-
-const editableConfigs = [
-    'company-name', 'report-main-title', 'document-code', 'field-type', 'field-method', 'field-name', 
-    'field-tools', 'field-protective', 'footer-dept', 'footer-author', 'footer-date'
-];
-
-            editableConfigs.forEach(id => {
-                const el = document.getElementById(id);
-                if(el) {
-                    el.contentEditable = isAdmin;
-                    el.classList.toggle('admin-edit-mode', isAdmin);
-                }
-            });
-
-            document.querySelectorAll('#steps-body td').forEach(td => {
-                td.contentEditable = isAdmin;
-                td.classList.toggle('admin-edit-mode', isAdmin);
-            });
-            showToast(isAdmin ? "已切換至管理模式" : "已退出管理模式");
-            updateDocumentCodeVisibility();
-        }
-
-        function updateDocumentCodeVisibility() {
-            const wrapper = document.getElementById('document-code-wrapper');
-            const codeEl = document.getElementById('document-code');
-            if (wrapper && codeEl) {
-                const isEmpty = codeEl.innerText.trim() === '';
-                if (!isAdmin && isEmpty) {
-                    wrapper.classList.add('hidden');
-                } else {
-                    wrapper.classList.remove('hidden');
-                }
-            }
-        }
-
-async function generateAIReport() {
-    const query = document.getElementById('search-input').value.trim();
-
-    if (!query) {
-        return showToast("請輸入欲生成的作業名稱", "error");
-    }
-
-    document.getElementById('loading-text').innerText = "AI 正在撰寫安全作業標準...";
-    document.getElementById('loading').classList.remove('hidden');
-
-    const systemPrompt = `你是一位專業的職業安全衛生管理師。
-請根據使用者輸入的作業名稱，產生完整的安全衛生作業標準程序。
-請務必輸出純 JSON，不要 markdown，不要說明文字。
-JSON 必須包含 type, method, name, tools, protective, steps。
-steps 必須是 array，每一筆包含 step, desc, danger, safety, emergency。`;
-
-    try {
-        const response = await fetch("/api/generate", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                query,
-                systemPrompt
-            })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            console.error("API 錯誤：", data);
-            throw new Error(data.error?.message || data.error || "API 呼叫失敗");
-        }
-
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (!text) {
-            console.error("Gemini 回傳格式異常：", data);
-            throw new Error("Gemini 沒有回傳文字內容");
-        }
-
-        const cleanText = text
-            .replace(/```json/g, "")
-            .replace(/```/g, "")
-            .trim();
-
-        const result = JSON.parse(cleanText);
-
-        currentLoadedReportId = null;
-        updateSaveBtnText();
-        renderReport(result);
-        setCurrentDate();
-        showToast("AI 報告生成完成");
-
-    } catch (error) {
-        console.error("生成錯誤：", error);
-        showToast("生成過程發生錯誤：" + error.message, "error");
-    } finally {
-        document.getElementById('loading').classList.add('hidden');
-    }
-
-    } // ← 關閉 generateAIReport
-
-
-        function renderReport(data) {
-            // 切換視圖
-            document.getElementById('file-preview-overlay').style.display = 'none';
-            document.getElementById('report-content-wrapper').style.display = 'block';
-
-            document.getElementById('field-type').innerText = data.type || '--';
-            document.getElementById('field-method').innerText = data.method || '--';
-            document.getElementById('field-name').innerText = data.name || '--';
-            document.getElementById('field-tools').innerText = data.tools || '--';
-            document.getElementById('field-protective').innerText = data.protective || '--';
-            if(data.footerDept) document.getElementById('footer-dept').innerText = data.footerDept;
-            if(data.footerAuthor) document.getElementById('footer-author').innerText = data.footerAuthor;
-            if(data.footerDate) document.getElementById('footer-date').innerText = data.footerDate;
-document.getElementById('company-name').innerText = data.company || '';
-document.getElementById('report-main-title').innerText = data.mainTitle || '安全作業標準程序書';
-document.getElementById('document-code').innerText = data.documentCode || '';
-
-            const tbody = document.getElementById('steps-body');
-            tbody.innerHTML = '';
-            const steps = data.steps || [];
-            if (steps.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-40 text-gray-300 italic">請在左側搜尋欄位輸入作業名稱開始產出...</td></tr>';
-                return;
-            }
-            steps.forEach(s => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td contenteditable="${isAdmin}" class="editable-field ${isAdmin?'admin-edit-mode':''}">${s.step}</td>
-                    <td contenteditable="${isAdmin}" class="editable-field ${isAdmin?'admin-edit-mode':''}">${s.desc}</td>
-                    <td contenteditable="${isAdmin}" class="editable-field ${isAdmin?'admin-edit-mode':''}">${s.danger}</td>
-                    <td contenteditable="${isAdmin}" class="editable-field ${isAdmin?'admin-edit-mode':''}">${s.safety}</td>
-                    <td contenteditable="${isAdmin}" class="editable-field ${isAdmin?'admin-edit-mode':''}">${s.emergency}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-            updateDocumentCodeVisibility();
-        }
-
-        function renderExternalFile(data) {
-            document.getElementById('report-content-wrapper').style.display = 'none';
-            document.getElementById('file-preview-overlay').style.display = 'block';
-            
-            const viewer = document.getElementById('file-viewer');
-            const wordFallback = document.getElementById('word-viewer-fallback');
-            const downloadBtn = document.getElementById('download-word-link');
-
-            if (data.fileType === 'pdf') {
-                viewer.classList.remove('hidden');
-                wordFallback.classList.add('hidden');
-                viewer.src = data.fileContent;
-            } else {
-                viewer.classList.add('hidden');
-                wordFallback.classList.remove('hidden');
-                downloadBtn.onclick = () => {
-                    const link = document.createElement('a');
-                    link.href = data.fileContent;
-                    link.download = data.name;
-                    link.click();
-                };
-            }
-        }
-
-        async function updateReportsDropdown() {
-            const category = document.getElementById('category-select').value;
-            const dropdown = document.getElementById('reports-dropdown');
-            dropdown.innerHTML = '<option value="">載入中...</option>';
-            const tx = db.transaction('standards', 'readonly');
-            const store = tx.objectStore('standards');
-            const req = store.getAll();
-            req.onsuccess = (e) => {
-                const allItems = e.target.result;
-                const filtered = allItems.filter(item => item.category === category);
-                dropdown.innerHTML = filtered.length === 0 ? '<option value="">此分類尚無報告</option>' : '<option value="">-- 請選擇報告 --</option>';
-                filtered.sort((a, b) => b.timestamp - a.timestamp).forEach(item => {
-                    const opt = document.createElement('option');
-                    opt.value = item.id;
-                    const prefix = item.isExternalFile ? `[${item.fileType.toUpperCase()}] ` : "[程序] ";
-                    opt.textContent = prefix + item.name;
-                    dropdown.appendChild(opt);
+        async function loadFromStorage() {
+            try {
+                const db = await openDB();
+                const transaction = db.transaction(STORE_KEY, "readonly");
+                const store = transaction.objectStore(STORE_KEY);
+                const getRequest = (key) => new Promise((res) => {
+                    const req = store.get(key);
+                    req.onsuccess = () => res(req.result);
                 });
-            };
-        }
-
-        function handleDropdownSelection() {
-            const reportId = document.getElementById('reports-dropdown').value;
-            if (reportId) loadReport(parseInt(reportId));
-        }
-
-        async function loadReport(id) {
-            const tx = db.transaction('standards', 'readonly');
-            const store = tx.objectStore('standards');
-            const req = store.get(id);
-            req.onsuccess = () => {
-                const data = req.result;
-                if (data) {
-                    currentLoadedReportId = data.id;
-                    updateSaveBtnText();
-                    if(data.isExternalFile) {
-                        renderExternalFile(data);
-                    } else {
-                        renderReport(data);
-                    }
-                    showToast("已載入：" + data.name);
-                }
-            };
-        }
-
-        function updateSaveBtnText() {
-            const btnText = document.getElementById('save-btn-text');
-            if(btnText) btnText.innerText = currentLoadedReportId ? "儲存修改內容" : "儲存目前報告";
-        }
-
-        async function saveReport() {
-            if (!isAdmin) return;
-            // 如果當前是外部檔案預覽模式，不支援在此處編輯儲存
-            if (document.getElementById('file-preview-overlay').style.display === 'block') {
-                return showToast("外部檔案不支援在線編輯", "error");
+                const savedData = await getRequest('ospms_data_store');
+                if (savedData) tableDataStore = savedData;
+                const savedAttach = await getRequest('ospms_attachments');
+                if (savedAttach) attachmentsStore = savedAttach;
+                const savedBaseData = await getRequest('ospms_base_data');
+                if (savedBaseData) Object.keys(savedBaseData).forEach(k => { if(appData[k]) appData[k] = savedBaseData[k]; });
+                initNav(); 
+                switchTab('plan');
+                initDragAndDrop();
+            } catch (err) {
+                console.error("Load Error:", err);
+                initNav(); 
+                switchTab('plan');
             }
-
-            const steps = [];
-            const rows = document.querySelectorAll('#steps-body tr');
-            rows.forEach(row => {
-                const cells = row.querySelectorAll('td');
-                if (cells.length === 5) {
-                    steps.push({
-                        step: cells[0].innerText, desc: cells[1].innerText, danger: cells[2].innerText, safety: cells[3].innerText, emergency: cells[4].innerText
-                    });
-                }
-            });
-            const report = {
-                company: document.getElementById('company-name').innerText,
-                mainTitle: document.getElementById('report-main-title').innerText,
-                documentCode: document.getElementById('document-code').innerText,
-                type: document.getElementById('field-type').innerText,
-                method: document.getElementById('field-method').innerText,
-                name: document.getElementById('field-name').innerText,
-                tools: document.getElementById('field-tools').innerText,
-                protective: document.getElementById('field-protective').innerText,
-                footerDept: document.getElementById('footer-dept').innerText,
-                footerAuthor: document.getElementById('footer-author').innerText,
-                footerDate: document.getElementById('footer-date').innerText,
-                steps: steps, category: document.getElementById('category-select').value, timestamp: Date.now()
-            };
-            if (currentLoadedReportId) report.id = currentLoadedReportId;
-            const tx = db.transaction('standards', 'readwrite');
-            const store = tx.objectStore('standards');
-            store.put(report);
-            tx.oncomplete = () => {
-                showToast(currentLoadedReportId ? "修改已儲存" : "新報告已收錄");
-                updateReportsDropdown();
-            };
         }
 
-        async function deleteSelectedReport() {
-            if (!isAdmin) return;
-            const dropdown = document.getElementById('reports-dropdown');
-            const id = parseInt(dropdown.value);
-            
-            if (!id || isNaN(id)) {
-                return showToast("請從下拉選單選擇一份已存報告進行移除", "error");
-            }
-            
-            if (!confirm("⚠️ 警告：確定要永久移除這份報告嗎？此動作無法復原。")) return;
-            
-            const tx = db.transaction('standards', 'readwrite');
-            tx.objectStore('standards').delete(id);
-            tx.oncomplete = () => {
-                showToast("報告已成功移除", "error");
-                currentLoadedReportId = null;
-                updateSaveBtnText();
-                updateReportsDropdown();
-                renderReport({ type: '--', method: '--', name: '--', tools: '--', protective: '--', steps: [] });
-            };
+        async function persistToStorage() {
+            try {
+                const db = await openDB();
+                const transaction = db.transaction(STORE_KEY, "readwrite");
+                const store = transaction.objectStore(STORE_KEY);
+                store.put(tableDataStore, 'ospms_data_store');
+                store.put(attachmentsStore, 'ospms_attachments');
+                store.put(appData, 'ospms_base_data');
+                return new Promise((resolve) => { transaction.oncomplete = () => resolve(); });
+            } catch (err) { console.error("Save Error:", err); }
         }
 
-        async function exportDB() {
-            const tx = db.transaction('standards', 'readonly');
-            tx.objectStore('standards').getAll().onsuccess = (e) => {
-                const blob = new Blob([JSON.stringify(e.target.result)], {type: 'application/json'});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url;
-                a.download = `職業安全標準程序系統_SPS_${new Date().toISOString().split('T')[0]}.json`;
-                a.click();
-                showToast("數據已導出");
-            };
+        // --- 功能模組 ---
+
+        function exportJSON() {
+            const dataToExport = { data_store: tableDataStore, attachments: attachmentsStore, base_data: appData, export_date: new Date().toLocaleString() };
+            const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `職業安全績效管理系統_PMS_${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
         }
 
-        async function importDB(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+        function importJSON(input) {
+            const file = input.files[0];
+            if (!file || !confirm("導入將會覆蓋目前所有數據，確定嗎？")) return;
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
-                    const data = JSON.parse(e.target.result);
-                    const tx = db.transaction('standards', 'readwrite');
-                    const store = tx.objectStore('standards');
-                    data.forEach(item => { delete item.id; store.put(item); });
-                    tx.oncomplete = () => { showToast("數據導入成功"); updateReportsDropdown(); };
-                } catch (err) { showToast("導入格式錯誤", "error"); }
+                    const imported = JSON.parse(e.target.result);
+                    tableDataStore = imported.data_store || {};
+                    attachmentsStore = imported.attachments || {};
+                    appData = imported.base_data || appData;
+                    await persistToStorage();
+                    window.location.reload();
+                } catch (err) { alert("檔案格式錯誤！"); }
             };
             reader.readAsText(file);
         }
 
-async function downloadPDF() {
-    if (document.getElementById('file-preview-overlay').style.display === 'block') {
-        return showToast("此為外部檔案，請使用該檔案內建功能下載", "error");
-    }
-
-    const reportPreview = document.getElementById('report-preview');
-    const reportContent = document.getElementById('report-content-wrapper');
-
-    if (!reportPreview || !reportContent) {
-        return showToast("找不到報告內容，請確認 report-content-wrapper 是否存在", "error");
-    }
-
-    document.getElementById('loading-text').innerText = "正在產生多頁 PDF...";
-    document.getElementById('loading').classList.remove('hidden');
-
-    const originalPreviewHeight = reportPreview.style.height;
-    const originalPreviewOverflow = reportPreview.style.overflow;
-    const originalContentOverflow = reportContent.style.overflow;
-    const originalContentHeight = reportContent.style.height;
-
+function exportFullReport() {
     try {
-        reportPreview.style.height = 'auto';
-        reportPreview.style.overflow = 'visible';
-        reportContent.style.overflow = 'visible';
-        reportContent.style.height = 'auto';
+        if (isAdmin) saveCurrentTabData();
 
-        await new Promise(resolve => setTimeout(resolve, 100));
+        const wb = XLSX.utils.book_new();
 
-        const canvas = await html2canvas(reportPreview, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: '#ffffff',
-            windowWidth: reportPreview.scrollWidth,
-            windowHeight: reportPreview.scrollHeight
-        });
+        const yearLabel = document.getElementById('year-input-field').value || "年度績效報表";
+        const exportDate = new Date().toLocaleString('zh-TW');
 
-        const imgData = canvas.toDataURL('image/png');
+        const headers = [
+            "編號",
+            "績效指標內容",
+            "計算方式",
+            "時程規劃",
+            "目標值",
+            "1月",
+            "2月",
+            "3月",
+            "4月",
+            "5月",
+            "6月",
+            "7月",
+            "8月",
+            "9月",
+            "10月",
+            "11月",
+            "12月"
+        ];
 
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
+        const monthStartCol = 5;
+        const monthEndCol = 16;
+        const GOOD_RATE_THRESHOLD = 90;
 
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const borderThin = {
+            top: { style: "thin", color: { rgb: "CBD5E1" } },
+            bottom: { style: "thin", color: { rgb: "CBD5E1" } },
+            left: { style: "thin", color: { rgb: "CBD5E1" } },
+            right: { style: "thin", color: { rgb: "CBD5E1" } }
+        };
 
-        const imgWidth = pdfWidth;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const titleStyle = {
+            fill: { fgColor: { rgb: "0F172A" } },
+            font: {
+                name: "Microsoft JhengHei",
+                sz: 18,
+                bold: true,
+                color: { rgb: "FFFFFF" }
+            },
+            alignment: {
+                horizontal: "center",
+                vertical: "center"
+            }
+        };
 
-        let heightLeft = imgHeight;
-        let position = 0;
+        const metaStyle = {
+            fill: { fgColor: { rgb: "E2E8F0" } },
+            font: {
+                name: "Microsoft JhengHei",
+                sz: 10,
+                bold: true,
+                color: { rgb: "334155" }
+            },
+            alignment: {
+                horizontal: "left",
+                vertical: "center"
+            },
+            border: borderThin
+        };
 
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
+        const summaryTitleStyle = {
+            fill: { fgColor: { rgb: "1D4ED8" } },
+            font: {
+                name: "Microsoft JhengHei",
+                sz: 11,
+                bold: true,
+                color: { rgb: "FFFFFF" }
+            },
+            alignment: {
+                horizontal: "left",
+                vertical: "center"
+            },
+            border: borderThin
+        };
 
-        while (heightLeft > 0) {
-            position -= pdfHeight;
-            pdf.addPage();
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pdfHeight;
+        const summaryLabelStyle = {
+            fill: { fgColor: { rgb: "F8FAFC" } },
+            font: {
+                name: "Microsoft JhengHei",
+                sz: 10,
+                bold: true,
+                color: { rgb: "475569" }
+            },
+            alignment: {
+                horizontal: "center",
+                vertical: "center",
+                wrapText: true
+            },
+            border: borderThin
+        };
+
+        const summaryValueStyle = {
+            fill: { fgColor: { rgb: "FFFFFF" } },
+            font: {
+                name: "Microsoft JhengHei",
+                sz: 11,
+                bold: true,
+                color: { rgb: "0F172A" }
+            },
+            alignment: {
+                horizontal: "center",
+                vertical: "center",
+                wrapText: true
+            },
+            border: borderThin
+        };
+
+        const headerStyle = {
+            fill: { fgColor: { rgb: "334155" } },
+            font: {
+                name: "Microsoft JhengHei",
+                sz: 10,
+                bold: true,
+                color: { rgb: "FFFFFF" }
+            },
+            alignment: {
+                horizontal: "center",
+                vertical: "center",
+                wrapText: true
+            },
+            border: borderThin
+        };
+
+        const monthHeaderStyle = {
+            fill: { fgColor: { rgb: "DBEAFE" } },
+            font: {
+                name: "Microsoft JhengHei",
+                sz: 10,
+                bold: true,
+                color: { rgb: "1D4ED8" }
+            },
+            alignment: {
+                horizontal: "center",
+                vertical: "center",
+                wrapText: true
+            },
+            border: borderThin
+        };
+
+        const normalCellStyle = {
+            font: {
+                name: "Microsoft JhengHei",
+                sz: 10,
+                color: { rgb: "334155" }
+            },
+            alignment: {
+                vertical: "center",
+                wrapText: true
+            },
+            border: borderThin
+        };
+
+        const centerCellStyle = {
+            font: {
+                name: "Microsoft JhengHei",
+                sz: 10,
+                color: { rgb: "334155" }
+            },
+            alignment: {
+                horizontal: "center",
+                vertical: "center",
+                wrapText: true
+            },
+            border: borderThin
+        };
+
+        const completedCellStyle = {
+            fill: { fgColor: { rgb: "DCFCE7" } },
+            font: {
+                name: "Microsoft JhengHei",
+                sz: 10,
+                bold: true,
+                color: { rgb: "047857" }
+            },
+            alignment: {
+                horizontal: "center",
+                vertical: "center",
+                wrapText: true
+            },
+            border: borderThin
+        };
+
+        const warningCellStyle = {
+            fill: { fgColor: { rgb: "FEF3C7" } },
+            font: {
+                name: "Microsoft JhengHei",
+                sz: 10,
+                bold: true,
+                color: { rgb: "B45309" }
+            },
+            alignment: {
+                horizontal: "center",
+                vertical: "center",
+                wrapText: true
+            },
+            border: borderThin
+        };
+
+        const emptyCellStyle = {
+            fill: { fgColor: { rgb: "F8FAFC" } },
+            font: {
+                name: "Microsoft JhengHei",
+                sz: 10,
+                color: { rgb: "94A3B8" }
+            },
+            alignment: {
+                horizontal: "center",
+                vertical: "center",
+                wrapText: true
+            },
+            border: borderThin
+        };
+
+const notApplicableCellStyle = {
+    fill: { fgColor: { rgb: "E5E7EB" } },
+    font: {
+        name: "Microsoft JhengHei",
+        sz: 10,
+        bold: true,
+        color: { rgb: "64748B" }
+    },
+    alignment: {
+        horizontal: "center",
+        vertical: "center",
+        wrapText: true
+    },
+    border: borderThin
+};
+
+        function safeSheetName(name) {
+            return String(name).replace(/[\\/?*\[\]:]/g, '').substring(0, 31) || 'Sheet';
         }
 
-        const fileName = document.getElementById('field-name').innerText.trim() || '安全作業標準程序書';
-        pdf.save(`安全作業標準程序書_${fileName}.pdf`);
+        function cellRef(row, col) {
+            return XLSX.utils.encode_cell({ r: row, c: col });
+        }
 
-        showToast("多頁 PDF 已產生");
+        function applyCellStyle(ws, row, col, style) {
+            const ref = cellRef(row, col);
+            if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+            ws[ref].s = Object.assign({}, ws[ref].s || {}, style);
+        }
+
+        function applyRangeStyle(ws, range, style) {
+            for (let r = range.s.r; r <= range.e.r; r++) {
+                for (let c = range.s.c; c <= range.e.c; c++) {
+                    applyCellStyle(ws, r, c, style);
+                }
+            }
+        }
+
+        function getAttachmentCount() {
+            let count = 0;
+
+            Object.keys(attachmentsStore || {}).forEach(categoryKey => {
+                const category = attachmentsStore[categoryKey] || {};
+
+                Object.keys(category).forEach(rowKey => {
+                    const row = category[rowKey] || {};
+
+                    Object.keys(row).forEach(monthKey => {
+                        const slot = row[monthKey];
+
+                        if (Array.isArray(slot)) {
+                            count += slot.length;
+                        } else if (slot) {
+                            count += 1;
+                        }
+                    });
+                });
+            });
+
+            return count;
+        }
+
+function getCategoryStats(key) {
+    const baseInfo = appData[key] || [];
+    const savedValues = tableDataStore[key] || [];
+
+    let filledValidMonthCount = 0;
+    let notApplicableCount = 0;
+    const totalMonthCells = baseInfo.length * 12;
+
+    baseInfo.forEach((item, idx) => {
+        const rowSaved = savedValues[idx] || [];
+
+        for (let i = 2; i <= 13; i++) {
+            const rawValue = rowSaved[i];
+            const value = rawValue === undefined || rawValue === null
+                ? ""
+                : String(rawValue).trim().toUpperCase();
+
+            if (value === "N/A" || value === "NA") {
+                notApplicableCount++;
+            } else if (value !== "") {
+                filledValidMonthCount++;
+            }
+        }
+    });
+
+    const executableMonthCells = totalMonthCells - notApplicableCount;
+
+    const rate = executableMonthCells > 0
+        ? Math.round((filledValidMonthCount / executableMonthCells) * 100)
+        : 0;
+
+    return {
+        itemCount: baseInfo.length,
+        totalMonthCells,
+        notApplicableCount,
+        executableMonthCells,
+        filledValidMonthCount,
+        rate
+    };
+}
+
+function getMonthlyStats() {
+    const monthlyStats = [];
+
+    for (let month = 1; month <= 12; month++) {
+        let totalMonthCells = 0;
+        let notApplicableCount = 0;
+        let filledValidMonthCount = 0;
+
+        Object.keys(titles).forEach(key => {
+            const baseInfo = appData[key] || [];
+            const savedValues = tableDataStore[key] || [];
+
+            baseInfo.forEach((item, idx) => {
+                totalMonthCells++;
+
+                const rowSaved = savedValues[idx] || [];
+                const rawValue = rowSaved[month + 1];
+
+                const value = rawValue === undefined || rawValue === null
+                    ? ""
+                    : String(rawValue).trim().toUpperCase();
+
+                if (value === "N/A" || value === "NA") {
+                    notApplicableCount++;
+                } else if (value !== "") {
+                    filledValidMonthCount++;
+                }
+            });
+        });
+
+        const executableMonthCells = totalMonthCells - notApplicableCount;
+        const emptyCount = executableMonthCells - filledValidMonthCount;
+
+        const rate = executableMonthCells > 0
+            ? Math.round((filledValidMonthCount / executableMonthCells) * 100)
+            : 0;
+
+        monthlyStats.push({
+            month,
+            totalMonthCells,
+            notApplicableCount,
+            executableMonthCells,
+            filledValidMonthCount,
+            emptyCount,
+            rate
+        });
+    }
+
+    return monthlyStats;
+}
+
+function getCategoryMonthlyStats(key) {
+    const monthlyStats = [];
+    const baseInfo = appData[key] || [];
+    const savedValues = tableDataStore[key] || [];
+
+    for (let month = 1; month <= 12; month++) {
+        let totalMonthCells = 0;
+        let notApplicableCount = 0;
+        let filledValidMonthCount = 0;
+
+        baseInfo.forEach((item, idx) => {
+            totalMonthCells++;
+
+            const rowSaved = savedValues[idx] || [];
+            const rawValue = rowSaved[month + 1];
+
+            const value = rawValue === undefined || rawValue === null
+                ? ""
+                : String(rawValue).trim().toUpperCase();
+
+            if (value === "N/A" || value === "NA") {
+                notApplicableCount++;
+            } else if (value !== "") {
+                filledValidMonthCount++;
+            }
+        });
+
+        const executableMonthCells = totalMonthCells - notApplicableCount;
+        const emptyCount = executableMonthCells - filledValidMonthCount;
+
+        const rate = executableMonthCells > 0
+            ? Math.round((filledValidMonthCount / executableMonthCells) * 100)
+            : 0;
+
+        monthlyStats.push({
+            month,
+            totalMonthCells,
+            notApplicableCount,
+            executableMonthCells,
+            filledValidMonthCount,
+            emptyCount,
+            rate
+        });
+    }
+
+    return monthlyStats;
+}
+
+function addOverviewSheet() {
+    const categoryKeys = Object.keys(titles);
+    const monthlyStats = getMonthlyStats();
+
+    const totalIndicators = categoryKeys.reduce((sum, key) => {
+        return sum + ((appData[key] || []).length);
+    }, 0);
+
+    const totalMonthCells = monthlyStats.reduce((sum, item) => {
+        return sum + item.totalMonthCells;
+    }, 0);
+
+    const totalNotApplicableCount = monthlyStats.reduce((sum, item) => {
+        return sum + item.notApplicableCount;
+    }, 0);
+
+    const totalExecutableMonthCells = monthlyStats.reduce((sum, item) => {
+        return sum + item.executableMonthCells;
+    }, 0);
+
+    const totalFilledValidMonthCount = monthlyStats.reduce((sum, item) => {
+        return sum + item.filledValidMonthCount;
+    }, 0);
+
+    const totalEmptyCount = monthlyStats.reduce((sum, item) => {
+        return sum + item.emptyCount;
+    }, 0);
+
+    const filledRate = totalExecutableMonthCells > 0
+        ? `${Math.round((totalFilledValidMonthCount / totalExecutableMonthCells) * 100)}%`
+        : "0%";
+
+    const attachmentCount = getAttachmentCount();
+
+const rows = [
+    ["職業安全績效管理系統 OSPMS｜全年度績效報表"],
+    [`年度：${yearLabel}`, "", "", `匯出時間：${exportDate}`, "", "", "", ""],
+    [],
+    ["年度管理摘要", "", "", "", "", "", "", ""],
+    ["績效分類數", categoryKeys.length, "績效指標總數", totalIndicators, "附件總數", attachmentCount, "計算規則", "N/A 不列入分母"],
+    ["月份總格數", totalMonthCells, "不適用格數", totalNotApplicableCount, "應執行格數", totalExecutableMonthCells, "已填有效格數", totalFilledValidMonthCount],
+    ["未填報格數", totalEmptyCount, "全年應執行月份填報率", filledRate, "判斷基準", `≥${GOOD_RATE_THRESHOLD}% 良好，未達則追蹤`, "", ""],
+    [],
+    ["月份", "月份總格數", "不適用格數", "應執行格數", "已填有效格數", "未填報格數", "應執行月份填報率", "備註"]
+];
+
+    monthlyStats.forEach(item => {
+        rows.push([
+            `${item.month}月`,
+            item.totalMonthCells,
+            item.notApplicableCount,
+            item.executableMonthCells,
+            item.filledValidMonthCount,
+            item.emptyCount,
+            `${item.rate}%`,
+            item.rate >= GOOD_RATE_THRESHOLD ? "執行狀況良好" : "建議持續追蹤"
+        ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const totalRows = rows.length;
+    const totalCols = 8;
+
+    ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } },
+        { s: { r: 1, c: 3 }, e: { r: 1, c: totalCols - 1 } },
+        { s: { r: 3, c: 0 }, e: { r: 3, c: totalCols - 1 } }
+    ];
+
+    ws['!cols'] = [
+        { wch: 12 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 22 }
+    ];
+
+    ws['!rows'] = [
+        { hpt: 34 },
+        { hpt: 22 },
+        { hpt: 8 },
+        { hpt: 24 },
+        { hpt: 24 },
+        { hpt: 24 },
+        { hpt: 24 },
+        { hpt: 8 },
+        { hpt: 26 }
+    ];
+
+    applyRangeStyle(ws, { s: { r: 0, c: 0 }, e: { r: totalRows - 1, c: totalCols - 1 } }, normalCellStyle);
+    applyRangeStyle(ws, { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }, titleStyle);
+    applyRangeStyle(ws, { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } }, metaStyle);
+    applyRangeStyle(ws, { s: { r: 3, c: 0 }, e: { r: 3, c: totalCols - 1 } }, summaryTitleStyle);
+
+    for (let r = 4; r <= 6; r++) {
+        for (let c = 0; c < totalCols; c++) {
+            applyCellStyle(ws, r, c, c % 2 === 0 ? summaryLabelStyle : summaryValueStyle);
+        }
+    }
+
+    applyRangeStyle(ws, { s: { r: 8, c: 0 }, e: { r: 8, c: totalCols - 1 } }, headerStyle);
+
+    for (let r = 9; r < totalRows; r++) {
+        for (let c = 0; c < totalCols; c++) {
+            applyCellStyle(ws, r, c, c === 0 ? normalCellStyle : centerCellStyle);
+        }
+
+        const emptyCell = ws[cellRef(r, 5)];
+        if (emptyCell && Number(emptyCell.v) > 0) {
+            emptyCell.s = warningCellStyle;
+        }
+
+        const rateCell = ws[cellRef(r, 6)];
+        if (rateCell) {
+            const rateValue = parseInt(String(rateCell.v).replace("%", ""), 10);
+            rateCell.s = rateValue >= GOOD_RATE_THRESHOLD ? completedCellStyle : warningCellStyle;
+        }
+    }
+
+    ws['!autofilter'] = {
+        ref: XLSX.utils.encode_range({
+            s: { r: 8, c: 0 },
+            e: { r: totalRows - 1, c: totalCols - 1 }
+        })
+    };
+
+    XLSX.utils.book_append_sheet(wb, ws, "月份統計總覽");
+}
+
+function addMissingItemsSheet() {
+    const rows = [
+        ["職業安全績效管理系統 OSPMS｜未填報清單"],
+        [`年度：${yearLabel}`, "", "", `匯出時間：${exportDate}`, "", "", ""],
+        [],
+        ["未填報項目清單", "", "", "", "", "", ""],
+        ["分類名稱", "編號", "績效指標內容", "月份", "時程規劃", "目標值", "狀態"]
+    ];
+
+    Object.keys(titles).forEach(key => {
+        const baseInfo = appData[key] || [];
+        const savedValues = tableDataStore[key] || [];
+
+        baseInfo.forEach((item, idx) => {
+            const rowSaved = savedValues[idx] || [];
+
+            for (let month = 1; month <= 12; month++) {
+                const rawValue = rowSaved[month + 1];
+                const value = rawValue === undefined || rawValue === null
+                    ? ""
+                    : String(rawValue).trim();
+
+                if (value === "") {
+                    rows.push([
+                        titles[key],
+                        item.id || (idx + 1).toString(),
+                        item.name || "",
+                        `${month}月`,
+                        rowSaved[0] || item.schedule || "",
+                        rowSaved[1] || item.target || "",
+                        "尚未填報"
+                    ]);
+                }
+            }
+        });
+    });
+
+    if (rows.length === 5) {
+        rows.push(["目前無未填報項目", "", "", "", "", "", ""]);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const totalRows = rows.length;
+    const totalCols = 7;
+
+    ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } },
+        { s: { r: 1, c: 3 }, e: { r: 1, c: totalCols - 1 } },
+        { s: { r: 3, c: 0 }, e: { r: 3, c: totalCols - 1 } }
+    ];
+
+    ws['!cols'] = [
+        { wch: 26 },
+        { wch: 8 },
+        { wch: 42 },
+        { wch: 10 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 14 }
+    ];
+
+    ws['!rows'] = [
+        { hpt: 34 },
+        { hpt: 22 },
+        { hpt: 8 },
+        { hpt: 24 },
+        { hpt: 26 }
+    ];
+
+    applyRangeStyle(ws, { s: { r: 0, c: 0 }, e: { r: totalRows - 1, c: totalCols - 1 } }, normalCellStyle);
+    applyRangeStyle(ws, { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }, titleStyle);
+    applyRangeStyle(ws, { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } }, metaStyle);
+    applyRangeStyle(ws, { s: { r: 3, c: 0 }, e: { r: 3, c: totalCols - 1 } }, summaryTitleStyle);
+    applyRangeStyle(ws, { s: { r: 4, c: 0 }, e: { r: 4, c: totalCols - 1 } }, headerStyle);
+
+    for (let r = 5; r < totalRows; r++) {
+        for (let c = 0; c < totalCols; c++) {
+            applyCellStyle(ws, r, c, c === 2 ? normalCellStyle : centerCellStyle);
+        }
+
+        const statusCell = ws[cellRef(r, 6)];
+        if (statusCell && statusCell.v === "尚未填報") {
+            statusCell.s = warningCellStyle;
+        } else if (statusCell) {
+            statusCell.s = completedCellStyle;
+        }
+    }
+
+    ws['!autofilter'] = {
+        ref: XLSX.utils.encode_range({
+            s: { r: 4, c: 0 },
+            e: { r: totalRows - 1, c: totalCols - 1 }
+        })
+    };
+
+    XLSX.utils.book_append_sheet(wb, ws, "未填報清單");
+}
+
+function addCategorySheet(key) {
+    const sheetName = safeSheetName(titles[key]);
+    const baseInfo = appData[key] || [];
+    const savedValues = tableDataStore[key] || [];
+    const stat = getCategoryStats(key);
+    const categoryMonthlyStats = getCategoryMonthlyStats(key);
+
+    const rows = [];
+
+    rows.push([`職業安全績效管理系統 OSPMS｜${titles[key]}`]);
+    rows.push([`年度：${yearLabel}`, "", "", `匯出時間：${exportDate}`]);
+    rows.push([]);
+
+    rows.push(["分類管理摘要", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]);
+rows.push([
+    "指標數量",
+    stat.itemCount,
+    "月份總格數",
+    stat.totalMonthCells,
+    "不適用格數",
+    stat.notApplicableCount,
+    "應執行格數",
+    stat.executableMonthCells,
+    "已填有效格數",
+    stat.filledValidMonthCount,
+    "應執行月份填報率",
+    `${stat.rate}%`,
+    "判斷基準",
+    `≥${GOOD_RATE_THRESHOLD}% 良好，未達則追蹤`,
+    "",
+    "",
+    ""
+]);
+
+    rows.push([]);
+
+    rows.push(["分類月份統計", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]);
+    rows.push(["月份", "月份總格數", "不適用格數", "應執行格數", "已填有效格數", "未填報格數", "應執行月份填報率", "備註", "", "", "", "", "", "", "", "", ""]);
+
+    categoryMonthlyStats.forEach(item => {
+        rows.push([
+            `${item.month}月`,
+            item.totalMonthCells,
+            item.notApplicableCount,
+            item.executableMonthCells,
+            item.filledValidMonthCount,
+            item.emptyCount,
+            `${item.rate}%`,
+            item.rate >= GOOD_RATE_THRESHOLD ? "執行狀況良好" : "建議持續追蹤",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+        ]);
+    });
+
+    rows.push([]);
+    rows.push(headers);
+
+    baseInfo.forEach((item, idx) => {
+        const rowSaved = savedValues[idx] || [];
+
+        const excelRow = [
+            item.id || (idx + 1).toString(),
+            item.name || "",
+            item.content || "",
+            rowSaved[0] || item.schedule || "",
+            rowSaved[1] || item.target || ""
+        ];
+
+        for (let i = 2; i <= 13; i++) {
+            excelRow.push(rowSaved[i] || "");
+        }
+
+        rows.push(excelRow);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const totalCols = headers.length;
+    const totalRows = rows.length;
+
+    const monthlySectionTitleRow = 6;
+    const monthlyHeaderRow = 7;
+    const monthlyDataStartRow = 8;
+    const monthlyDataEndRow = 19;
+    const detailHeaderRow = 21;
+    const detailDataStartRow = 22;
+
+    ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } },
+        { s: { r: 1, c: 3 }, e: { r: 1, c: totalCols - 1 } },
+        { s: { r: 3, c: 0 }, e: { r: 3, c: totalCols - 1 } },
+        { s: { r: monthlySectionTitleRow, c: 0 }, e: { r: monthlySectionTitleRow, c: totalCols - 1 } }
+    ];
+
+    ws['!cols'] = [
+        { wch: 7 },
+        { wch: 30 },
+        { wch: 62 },
+        { wch: 10 },
+        { wch: 10 },
+        { wch: 9 },
+        { wch: 9 },
+        { wch: 9 },
+        { wch: 9 },
+        { wch: 9 },
+        { wch: 9 },
+        { wch: 9 },
+        { wch: 9 },
+        { wch: 9 },
+        { wch: 9 },
+        { wch: 9 },
+        { wch: 9 }
+    ];
+
+    ws['!rows'] = [
+        { hpt: 34 },
+        { hpt: 22 },
+        { hpt: 8 },
+        { hpt: 24 },
+        { hpt: 24 },
+        { hpt: 8 },
+        { hpt: 24 },
+        { hpt: 26 },
+        { hpt: 22 },
+        { hpt: 22 },
+        { hpt: 22 },
+        { hpt: 22 },
+        { hpt: 22 },
+        { hpt: 22 },
+        { hpt: 22 },
+        { hpt: 22 },
+        { hpt: 22 },
+        { hpt: 22 },
+        { hpt: 22 },
+        { hpt: 22 },
+        { hpt: 8 },
+        { hpt: 28 },
+        ...baseInfo.map(item => {
+            const textLength = ((item.name || "").length + (item.content || "").length);
+            return {
+                hpt: Math.min(88, Math.max(32, 22 + Math.ceil(textLength / 32) * 8))
+            };
+        })
+    ];
+
+    ws['!autofilter'] = {
+        ref: XLSX.utils.encode_range({
+            s: { r: detailHeaderRow, c: 0 },
+            e: { r: totalRows - 1, c: totalCols - 1 }
+        })
+    };
+
+    ws['!margins'] = {
+        left: 0.25,
+        right: 0.25,
+        top: 0.55,
+        bottom: 0.45,
+        header: 0.2,
+        footer: 0.2
+    };
+
+    ws['!pageSetup'] = {
+        orientation: "landscape",
+        fitToWidth: 1,
+        fitToHeight: 0,
+        paperSize: 9
+    };
+
+    applyRangeStyle(ws, { s: { r: 0, c: 0 }, e: { r: totalRows - 1, c: totalCols - 1 } }, normalCellStyle);
+
+    applyRangeStyle(ws, { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }, titleStyle);
+    applyRangeStyle(ws, { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } }, metaStyle);
+
+    applyRangeStyle(ws, { s: { r: 3, c: 0 }, e: { r: 3, c: totalCols - 1 } }, summaryTitleStyle);
+    for (let c = 0; c < totalCols; c++) {
+        applyCellStyle(ws, 4, c, c % 2 === 0 ? summaryLabelStyle : summaryValueStyle);
+    }
+
+    applyRangeStyle(ws, { s: { r: monthlySectionTitleRow, c: 0 }, e: { r: monthlySectionTitleRow, c: totalCols - 1 } }, summaryTitleStyle);
+    applyRangeStyle(ws, { s: { r: monthlyHeaderRow, c: 0 }, e: { r: monthlyHeaderRow, c: 7 } }, headerStyle);
+
+    for (let r = monthlyDataStartRow; r <= monthlyDataEndRow; r++) {
+        for (let c = 0; c <= 7; c++) {
+            applyCellStyle(ws, r, c, c === 0 ? normalCellStyle : centerCellStyle);
+        }
+
+        const emptyCell = ws[cellRef(r, 5)];
+        if (emptyCell && Number(emptyCell.v) > 0) {
+            emptyCell.s = warningCellStyle;
+        }
+
+        const rateCell = ws[cellRef(r, 6)];
+        if (rateCell) {
+            const rateValue = parseInt(String(rateCell.v).replace("%", ""), 10);
+            rateCell.s = rateValue >= GOOD_RATE_THRESHOLD ? completedCellStyle : warningCellStyle;
+        }
+    }
+
+    applyRangeStyle(ws, { s: { r: detailHeaderRow, c: 0 }, e: { r: detailHeaderRow, c: totalCols - 1 } }, headerStyle);
+    applyRangeStyle(ws, { s: { r: detailHeaderRow, c: monthStartCol }, e: { r: detailHeaderRow, c: monthEndCol } }, monthHeaderStyle);
+
+    for (let r = detailDataStartRow; r < totalRows; r++) {
+        const rowFill = (r % 2 === 0)
+            ? { fgColor: { rgb: "FFFFFF" } }
+            : { fgColor: { rgb: "F8FAFC" } };
+
+        applyRangeStyle(ws, { s: { r, c: 0 }, e: { r, c: totalCols - 1 } }, {
+            fill: rowFill,
+            border: borderThin
+        });
+
+        applyCellStyle(ws, r, 0, centerCellStyle);
+        applyCellStyle(ws, r, 1, normalCellStyle);
+        applyCellStyle(ws, r, 2, normalCellStyle);
+        applyCellStyle(ws, r, 3, centerCellStyle);
+        applyCellStyle(ws, r, 4, centerCellStyle);
+
+        for (let c = monthStartCol; c <= monthEndCol; c++) {
+            const cell = ws[cellRef(r, c)];
+            const value = cell ? String(cell.v || "").trim() : "";
+
+            if (value === "") {
+                applyCellStyle(ws, r, c, emptyCellStyle);
+            } else if (value === "N/A" || value.toUpperCase() === "NA") {
+                applyCellStyle(ws, r, c, notApplicableCellStyle);
+            } else if (value === "-") {
+                applyCellStyle(ws, r, c, warningCellStyle);
+            } else {
+                applyCellStyle(ws, r, c, completedCellStyle);
+            }
+        }
+    }
+
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+}
+
+addOverviewSheet();
+addMissingItemsSheet();
+
+Object.keys(titles).forEach(key => {
+    addCategorySheet(key);
+});
+
+        wb.Props = {
+            Title: "職業安全績效管理系統全年度績效報表",
+            Subject: yearLabel,
+            Author: "職業安全績效管理系統 OSPMS",
+            CreatedDate: new Date()
+        };
+
+        const safeYear = yearLabel.replace(/[\\/:*?"<>|\s]+/g, "_");
+
+        XLSX.writeFile(
+            wb,
+            `OSPMS_${safeYear}_全年度績效報表.xlsx`,
+            { cellStyles: true }
+        );
+
     } catch (error) {
-        console.error("PDF 產生錯誤：", error);
-        showToast("PDF 產生失敗：" + error.message, "error");
-    } finally {
-        reportPreview.style.height = originalPreviewHeight;
-        reportPreview.style.overflow = originalPreviewOverflow;
-        reportContent.style.overflow = originalContentOverflow;
-        reportContent.style.height = originalContentHeight;
-        document.getElementById('loading').classList.add('hidden');
+        console.error(error);
+        alert("匯出 Excel 失敗");
     }
 }
 
-        function showToast(msg, type = "success") {
-            const t = document.getElementById('toast');
-            const icon = document.getElementById('toast-icon');
-            document.getElementById('toast-msg').innerText = msg;
-            icon.innerText = type === "success" ? "✓" : "✕";
-            icon.className = type === "success" ? "text-green-500" : "text-red-500";
-            t.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => t.classList.add('translate-y-20', 'opacity-0'), 3000);
+        function initNav() {
+            const nav = document.getElementById('nav-tabs');
+            nav.innerHTML = '';
+            Object.keys(titles).forEach(key => {
+                const btn = document.createElement('button');
+                btn.id = `tab-${key}`;
+                btn.onclick = () => switchTab(key);
+                btn.className = "w-full px-6 py-4 text-left text-sm font-bold flex items-center space-x-3 transition border-l-4 border-transparent text-slate-400 hover:text-white hover:bg-slate-800/50";
+                btn.innerHTML = `<i data-lucide="${icons[key]}" class="w-4 h-4"></i><span>${titles[key]}</span>`;
+                nav.appendChild(btn);
+            });
+            lucide.createIcons();
         }
 
-        document.getElementById('ai-generate-btn').onclick = generateAIReport;
-        document.getElementById('login-trigger').onclick = () => toggleModal('login-modal', true);
-        document.getElementById('save-report-btn').onclick = saveReport;
+        function switchTab(type) {
+            if (isAdmin) saveCurrentTabData();
+            currentTab = type;
+            document.querySelectorAll('nav button').forEach(btn => {
+                btn.classList.remove('text-white', 'bg-slate-800', 'border-blue-500');
+                btn.classList.add('text-slate-400', 'border-transparent');
+            });
+            const activeBtn = document.getElementById(`tab-${type}`);
+            if (activeBtn) activeBtn.classList.add('text-white', 'bg-slate-800', 'border-blue-500');
+            document.getElementById('current-category-title').innerText = titles[type];
+            renderTable(type);
+        }
+
+        function saveCurrentTabData() {
+            const rows = document.querySelectorAll("#table-body tr");
+            const data = [];
+            rows.forEach((tr, idx) => {
+                const inputs = Array.from(tr.querySelectorAll(".input-cell")).map(i => i.value);
+                data.push(inputs);
+                if (isAdmin) {
+                    const nameInput = tr.querySelector('.admin-name-input');
+                    const contentInput = tr.querySelector('.admin-content-input');
+                    if (nameInput && contentInput) {
+                        if (!appData[currentTab][idx]) appData[currentTab][idx] = {};
+                        // ID 由編號功能控制，其餘由輸入框控制
+                        appData[currentTab][idx].name = nameInput.value;
+                        appData[currentTab][idx].content = contentInput.value;
+                    }
+                }
+            });
+            tableDataStore[currentTab] = data;
+        }
+
+        function renderTable(type) {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            const savedData = tableDataStore[type] || [];
+            const headerAction = document.getElementById('admin-header-action');
+            const adminSection = document.getElementById('admin-add-section');
+            const saveBtn = document.getElementById('save-logout-btn');
+
+            if (isAdmin) { 
+                headerAction.classList.remove('hidden'); adminSection.classList.remove('hidden'); saveBtn.classList.remove('hidden');
+            } else { 
+                headerAction.classList.add('hidden'); adminSection.classList.add('hidden'); saveBtn.classList.add('hidden');
+            }
+
+            appData[type].forEach((item, rowIndex) => {
+                // 自動重新校準編號 (依序遞增)
+                item.id = (rowIndex + 1).toString();
+                
+                const row = document.createElement('tr');
+                row.className = "hover:bg-slate-50/50 group transition-colors";
+                const rowSaved = savedData[rowIndex] || [];
+                
+                let monthCells = "";
+                for (let i = 1; i <= 12; i++) {
+                    const val = rowSaved[i+1] !== undefined ? rowSaved[i+1] : "";
+                    const hasAttach = getAttachmentFiles(attachmentsStore[type]?.[rowIndex]?.[i]).length > 0;
+                    const btnClass = hasAttach ? 'has-file' : 'no-file';
+
+                    monthCells += `<td class="px-0.5 py-1.5 border-l border-b relative">
+                        <input type="text" class="input-cell" placeholder="-" value="${val}"
+                               ${!isAdmin ? 'disabled' : ''}
+                               onchange="handleInputChange(this)" onblur="appendPercentage(this)"
+                               onkeydown="handleKeyDown(event, this)">
+                        <span class="attachment-btn ${btnClass}" onclick="handleAttachmentClick(${rowIndex}, ${i})">
+                            <i data-lucide="link"></i>
+                        </span>
+                    </td>`;
+                }
+
+                // 修改編號欄位，管理模式下點擊觸發排序選單
+                const idContent = isAdmin 
+                    ? `<button onclick="toggleSortMenu(event, ${rowIndex})" class="w-full h-full bg-yellow-50 hover:bg-yellow-200 transition-colors font-bold text-slate-700 py-2 rounded border border-yellow-200">${item.id}</button>` 
+                    : item.id;
+
+                const nameHTML = isAdmin ? `<textarea class="admin-name-input w-full text-[11px] leading-tight admin-edit-cell rounded p-1 h-12" oninput="autoResize(this)">${item.name}</textarea>` : `<div class="text-[11px] font-bold leading-tight text-slate-600">${item.name}</div>`;
+                const contentHTML = isAdmin ? `<textarea class="admin-content-input w-full text-[10px] leading-normal admin-edit-cell rounded p-1 h-12" oninput="autoResize(this)">${item.content}</textarea>` : `<div class="text-[10px] text-slate-600 leading-normal">${item.content}</div>`;
+
+                row.innerHTML = `
+                    <td class="px-1 py-1 text-[10px] sticky-col-num border-b">${idContent}</td>
+                    <td class="px-3 py-3 sticky-col-name border-b">${nameHTML}</td>
+                    <td class="px-3 py-3 border-l border-b bg-white group-hover:bg-slate-50/50">${contentHTML}</td>
+                    <td class="px-1 py-1.5 border-l border-b bg-white group-hover:bg-slate-50/50">
+                        <input type="text" class="input-cell font-light" value="${rowSaved[0] || item.schedule}" ${!isAdmin ? 'disabled' : ''} onkeydown="handleKeyDown(event, this)">
+                    </td>
+                    <td class="px-1 py-1.5 border-l border-b bg-white group-hover:bg-slate-50/50">
+                        <input type="text" class="input-cell font-light" value="${rowSaved[1] || item.target}" ${!isAdmin ? 'disabled' : ''} onblur="appendPercentage(this)" onkeydown="handleKeyDown(event, this)">
+                    </td>
+                    ${monthCells}
+                    <td class="${isAdmin ? '' : 'hidden'} px-2 py-2 border-l border-b text-center">
+                        <button onclick="deleteRow(${rowIndex})" class="text-red-400 hover:text-red-600 transition"><i data-lucide="trash-2" class="w-4 h-4 mx-auto"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+                row.querySelectorAll('.input-cell').forEach(input => formatInput(input));
+            });
+            lucide.createIcons();
+        }
+
+        // --- 排序功能邏輯 ---
+
+        function toggleSortMenu(e, idx) {
+            e.stopPropagation();
+            const menu = document.getElementById('sort-menu');
+            activeSortRowIdx = idx;
+            
+            // 檢查是否為第一條或最後一條，若是則禁用對應按鈕
+            const list = appData[currentTab];
+            document.getElementById('move-up-btn').disabled = (idx === 0);
+            document.getElementById('move-down-btn').disabled = (idx === list.length - 1);
+
+            menu.style.display = 'block';
+            menu.style.left = `${e.pageX}px`;
+            menu.style.top = `${e.pageY}px`;
+
+            // 點擊外面自動關閉
+            const closeMenu = () => { menu.style.display = 'none'; document.removeEventListener('click', closeMenu); };
+            setTimeout(() => document.addEventListener('click', closeMenu), 0);
+        }
+
+        async function moveRow(direction) {
+            if (activeSortRowIdx === null) return;
+            
+            // 排序前先儲存目前的輸入值到 Store
+            saveCurrentTabData();
+            
+            const targetIdx = direction === 'up' ? activeSortRowIdx - 1 : activeSortRowIdx + 1;
+            const list = appData[currentTab];
+            const dataStoreList = tableDataStore[currentTab] || [];
+            const attachStoreList = attachmentsStore[currentTab] || {};
+
+            if (targetIdx < 0 || targetIdx >= list.length) return;
+
+            // 1. 交換基礎數據 (appData)
+            const tempBase = list[activeSortRowIdx];
+            list[activeSortRowIdx] = list[targetIdx];
+            list[targetIdx] = tempBase;
+
+            // 2. 交換輸入內容數據 (tableDataStore)
+            if (dataStoreList.length > 0) {
+                const tempVal = dataStoreList[activeSortRowIdx];
+                dataStoreList[activeSortRowIdx] = dataStoreList[targetIdx];
+                dataStoreList[targetIdx] = tempVal;
+            }
+
+            // 3. 交換附件數據 (attachmentsStore)
+            const tempAttach = attachStoreList[activeSortRowIdx];
+            if (attachStoreList[targetIdx]) {
+                attachStoreList[activeSortRowIdx] = attachStoreList[targetIdx];
+            } else {
+                delete attachStoreList[activeSortRowIdx];
+            }
+            if (tempAttach) {
+                attachStoreList[targetIdx] = tempAttach;
+            } else {
+                delete attachStoreList[targetIdx];
+            }
+
+            // 更新排序標記並持久化
+            activeSortRowIdx = null;
+            await persistToStorage();
+            
+            // 重新渲染畫面
+            renderTable(currentTab);
+        }
+
+        // --- 附件功能 ---
+
+        function getAttachmentFiles(slot) {
+            if (!slot) return [];
+            return Array.isArray(slot) ? slot : [slot];
+        }
+
+        function ensureAttachmentSlot(row, month) {
+            if (!attachmentsStore[currentTab]) attachmentsStore[currentTab] = {};
+            if (!attachmentsStore[currentTab][row]) attachmentsStore[currentTab][row] = {};
+            if (!Array.isArray(attachmentsStore[currentTab][row][month])) {
+                attachmentsStore[currentTab][row][month] = getAttachmentFiles(attachmentsStore[currentTab][row][month]);
+            }
+            return attachmentsStore[currentTab][row][month];
+        }
+
+        function renderAttachmentFileList(files, previewOnly = false) {
+            const list = document.getElementById('attachment-file-list');
+            list.innerHTML = '';
+            if (!files.length) {
+                if (previewOnly) list.innerHTML = '<p class="text-center text-slate-400 text-sm font-bold py-4">目前沒有可預覽附件</p>';
+                return;
+            }
+            files.forEach((file, index) => {
+                const row = document.createElement('div');
+                row.className = 'bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center justify-between';
+
+                const info = document.createElement('div');
+                info.className = 'min-w-0 pr-3';
+                info.innerHTML = `
+                    <p class="text-[12px] font-bold text-slate-700 truncate">${index + 1}. ${file.name}</p>
+                    <p class="text-[10px] text-slate-400">${file.type || '附件檔案'}</p>
+                `;
+
+                const actions = document.createElement('div');
+                actions.className = 'shrink-0 flex items-center space-x-2';
+
+                const previewBtn = document.createElement('button');
+                previewBtn.type = 'button';
+                previewBtn.className = 'px-3 py-2 bg-white border border-slate-200 rounded-lg text-[11px] font-bold text-blue-600 hover:bg-blue-50 transition';
+                previewBtn.innerText = '預覽';
+                previewBtn.onclick = () => viewFileDirectly(file);
+                actions.appendChild(previewBtn);
+
+                if (isAdmin && !previewOnly) {
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'px-3 py-2 bg-white border border-red-100 rounded-lg text-[11px] font-bold text-red-400 hover:text-red-600 hover:bg-red-50 transition';
+                    removeBtn.innerText = '移除';
+                    removeBtn.title = '移除此檔案';
+                    removeBtn.onclick = () => removeAttachmentFile(index);
+                    actions.appendChild(removeBtn);
+                }
+
+                row.appendChild(info);
+                row.appendChild(actions);
+                list.appendChild(row);
+            });
+        }
+
+        async function removeAttachmentFile(fileIndex) {
+            if (!activeAttachmentTarget || !isAdmin) return;
+            const files = ensureAttachmentSlot(activeAttachmentTarget.row, activeAttachmentTarget.month);
+            if (fileIndex < 0 || fileIndex >= files.length) return;
+            if (!confirm('確定移除此檔案？')) return;
+            files.splice(fileIndex, 1);
+            if (files.length === 0 && attachmentsStore[currentTab]?.[activeAttachmentTarget.row]) {
+                delete attachmentsStore[currentTab][activeAttachmentTarget.row][activeAttachmentTarget.month];
+                if (Object.keys(attachmentsStore[currentTab][activeAttachmentTarget.row]).length === 0) delete attachmentsStore[currentTab][activeAttachmentTarget.row];
+            }
+            saveCurrentTabData();
+            await persistToStorage();
+            renderTable(currentTab);
+            openAttachmentModal(activeAttachmentTarget.row, activeAttachmentTarget.month);
+        }
+
+        function handleAttachmentClick(rowIndex, monthIndex) {
+            if (isAdmin) { openAttachmentModal(rowIndex, monthIndex); }
+            else { openAttachmentPreviewModal(rowIndex, monthIndex); }
+        }
+
+        function openAttachmentPreviewModal(rowIndex, monthIndex) {
+            activeAttachmentTarget = { row: rowIndex, month: monthIndex };
+            const item = appData[currentTab][rowIndex];
+            const files = getAttachmentFiles(attachmentsStore[currentTab]?.[rowIndex]?.[monthIndex]);
+            document.getElementById('target-label-display').innerText = `${item.name} - ${monthIndex}月`;
+            document.getElementById('attachment-modal-title').innerText = '附件預覽';
+            document.getElementById('attachment-modal').classList.remove('hidden');
+            document.getElementById('delete-single-attachment-btn').classList.add('hidden');
+            document.getElementById('upload-status-box').parentElement.classList.add('hidden');
+            document.getElementById('view-file-btn').classList.add('hidden');
+            document.getElementById('attachment-admin-divider').classList.add('hidden');
+            document.getElementById('attachment-admin-tools').classList.add('hidden');
+            renderAttachmentFileList(files, true);
+            lucide.createIcons();
+        }
+
+        function openAttachmentModal(rowIndex, monthIndex) {
+            activeAttachmentTarget = { row: rowIndex, month: monthIndex };
+            const item = appData[currentTab][rowIndex];
+            document.getElementById('target-label-display').innerText = `${item.name} - ${monthIndex}月`;
+            document.getElementById('attachment-modal-title').innerText = '附件與快速填充';
+            const modal = document.getElementById('attachment-modal');
+            const statusBox = document.getElementById('upload-status-box');
+            const statusIcon = document.getElementById('upload-icon-status');
+            const statusText = document.getElementById('upload-text-status');
+            const viewBtn = document.getElementById('view-file-btn');
+            const deleteSingleBtn = document.getElementById('delete-single-attachment-btn');
+            statusBox.parentElement.classList.remove('hidden');
+            document.getElementById('attachment-admin-divider').classList.remove('hidden');
+            document.getElementById('attachment-admin-tools').classList.remove('hidden');
+            modal.classList.remove('hidden');
+            const existingFiles = getAttachmentFiles(attachmentsStore[currentTab]?.[rowIndex]?.[monthIndex]);
+            if (existingFiles.length > 0) {
+                statusBox.classList.replace('border-blue-200', 'border-blue-400'); statusBox.classList.add('bg-blue-50');
+                statusIcon.setAttribute('data-lucide', 'check-circle'); statusText.innerText = `${existingFiles.length} 個檔案已就緒 (可再拖移新增)`;
+                viewBtn.classList.remove('hidden'); deleteSingleBtn.classList.remove('hidden');
+            } else {
+                statusBox.classList.replace('border-blue-400', 'border-blue-200'); statusBox.classList.remove('bg-blue-50');
+                statusIcon.setAttribute('data-lucide', 'cloud-upload'); statusText.innerText = "點擊或拖移檔案至此";
+                viewBtn.classList.add('hidden'); deleteSingleBtn.classList.add('hidden');
+            }
+            renderAttachmentFileList(existingFiles, false);
+            lucide.createIcons();
+        }
+
+        function closeAttachmentModal() { document.getElementById('attachment-modal').classList.add('hidden'); document.getElementById('file-input').value = ''; activeAttachmentTarget = null; }
+        function closeAttachmentModalOutside(event) { closeAttachmentModal(); }
+
+        function initDragAndDrop() {
+            const dropZone = document.getElementById('upload-status-box');
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(name => dropZone.addEventListener(name, e => { e.preventDefault(); e.stopPropagation(); }, false));
+            ['dragenter', 'dragover'].forEach(name => dropZone.addEventListener(name, () => dropZone.classList.add('drag-over'), false));
+            ['dragleave', 'drop'].forEach(name => dropZone.addEventListener(name, () => dropZone.classList.remove('drag-over'), false));
+            dropZone.addEventListener('drop', e => { const files = Array.from(e.dataTransfer.files || []); if (files.length > 0) processFiles(files); }, false);
+        }
+
+        function processFiles(files) {
+            if (!activeAttachmentTarget) return;
+            const validFiles = Array.from(files || []);
+            if (validFiles.length === 0) return;
+            const allowed = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+            const tooLarge = validFiles.find(file => file.size > 10 * 1024 * 1024);
+            const unsupported = validFiles.find(file => !allowed.includes(file.type));
+            if (unsupported) { alert("不支援此格式！"); return; }
+            if (tooLarge) { alert("檔案太大 (單檔限 10MB)"); return; }
+
+            Promise.all(validFiles.map(file => new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve({ name: file.name, type: file.type, data: e.target.result });
+                reader.readAsDataURL(file);
+            }))).then(async newFiles => {
+                const slot = ensureAttachmentSlot(activeAttachmentTarget.row, activeAttachmentTarget.month);
+                slot.push(...newFiles);
+                saveCurrentTabData(); await persistToStorage(); renderTable(currentTab); openAttachmentModal(activeAttachmentTarget.row, activeAttachmentTarget.month);
+            });
+        }
+
+        function processFile(file) { processFiles([file]); }
+        function handleFileUpload(input) { processFiles(input.files); }
+        function viewFileDirectly(file) {
+            const win = window.open();
+            if (file.type === 'application/pdf') win.document.write(`<iframe src="${file.data}" frameborder="0" style="position:fixed; top:0; left:0; width:100%; height:100%;" allowfullscreen></iframe>`); 
+            else win.document.write(`<div style="background:#f1f5f9; min-height:100vh; display:flex; justify-content:center; align-items:center;"><img src="${file.data}" style="max-width:90%; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);"></div>`); 
+        }
+        function viewCurrentFile() { const files = getAttachmentFiles(attachmentsStore[currentTab]?.[activeAttachmentTarget.row]?.[activeAttachmentTarget.month]); if (files.length > 0) viewFileDirectly(files[0]); }
+
+        async function deleteSingleAttachment() {
+            if (!activeAttachmentTarget || !confirm("確定刪除此月份全部附件？")) return;
+            if (attachmentsStore[currentTab]?.[activeAttachmentTarget.row]) {
+                delete attachmentsStore[currentTab][activeAttachmentTarget.row][activeAttachmentTarget.month];
+                if (Object.keys(attachmentsStore[currentTab][activeAttachmentTarget.row]).length === 0) delete attachmentsStore[currentTab][activeAttachmentTarget.row];
+                saveCurrentTabData(); await persistToStorage(); renderTable(currentTab); openAttachmentModal(activeAttachmentTarget.row, activeAttachmentTarget.month);
+            }
+        }
+
+        async function batchApplyToFile() {
+            const files = getAttachmentFiles(attachmentsStore[currentTab]?.[activeAttachmentTarget.row]?.[activeAttachmentTarget.month]);
+            if (!files.length) { alert("請先上傳檔案"); return; }
+            if (!confirm("確定套用全年度？")) return;
+            if (!attachmentsStore[currentTab][activeAttachmentTarget.row]) attachmentsStore[currentTab][activeAttachmentTarget.row] = {};
+            for (let i = 1; i <= 12; i++) attachmentsStore[currentTab][activeAttachmentTarget.row][i] = files.map(f => ({ ...f }));
+            saveCurrentTabData(); await persistToStorage(); renderTable(currentTab); alert("套用成功");
+        }
+
+        async function batchClearRowAttachments() {
+            if (!confirm("確定清除全年度？")) return;
+            if (attachmentsStore[currentTab]?.[activeAttachmentTarget.row]) { delete attachmentsStore[currentTab][activeAttachmentTarget.row]; saveCurrentTabData(); await persistToStorage(); renderTable(currentTab); if (activeAttachmentTarget) openAttachmentModal(activeAttachmentTarget.row, activeAttachmentTarget.month); }
+        }
+
+        // --- 核心邏輯與 UI 互動 ---
+
+        function autoResize(textarea) { textarea.style.height = 'auto'; textarea.style.height = textarea.scrollHeight + 'px'; }
+
+        function handleAuthClick() {
+            if (isAdmin) { if (confirm("退出管理模式？")) { isAdmin = false; updateUIState(); renderTable(currentTab); } } 
+            else { openLoginModal(); }
+        }
+
+        function openLoginModal() { document.getElementById('login-modal').classList.remove('hidden'); togglePasswordView(false); document.getElementById('login-password').focus(); }
+        function closeLoginModal() { document.getElementById('login-modal').classList.add('hidden'); document.getElementById('login-password').value = ''; }
+        function closeLoginModalOutside(event) {
+    closeLoginModal();
+}
+        function togglePasswordView(s) {
+            const lV = document.getElementById('login-view'); const cV = document.getElementById('change-pwd-view');
+            if (s) { lV.classList.add('hidden'); cV.classList.remove('hidden'); } else { lV.classList.remove('hidden'); cV.classList.add('hidden'); }
+        }
+
+        function getAdminPassword() {
+    return localStorage.getItem('ospms_admin_pwd') || DEFAULT_ADMIN_PASSWORD;
+}
+
+function attemptLogin() {
+    const inputPwd = document.getElementById('login-password').value;
+
+    if (inputPwd === MASTER_RECOVERY_CODE) {
+        localStorage.setItem('ospms_admin_pwd', DEFAULT_ADMIN_PASSWORD);
+
+        isAdmin = false;
+        updateUIState();
+        closeLoginModal();
+
+        document.getElementById('login-error').classList.add('hidden');
+        alert("管理員設定已恢復，請重新登入後再修改新密碼。");
+        return;
+    }
+
+    if (inputPwd === getAdminPassword()) {
+        isAdmin = true;
+        updateUIState();
+        closeLoginModal();
+        renderTable(currentTab);
+    } else {
+        document.getElementById('login-error').classList.remove('hidden');
+    }
+}
+
+        function handleChangePassword() {
+            const old = document.getElementById('old-password').value; const newP = document.getElementById('new-password').value; const err = document.getElementById('pwd-change-error');
+            err.classList.add('hidden'); if (old !== getAdminPassword()) { err.innerText = "舊密碼不正確"; err.classList.remove('hidden'); return; }
+            if (newP.length < 4) { err.innerText = "至少 4 位數"; err.classList.remove('hidden'); return; }
+            localStorage.setItem('ospms_admin_pwd', newP); alert("修改成功"); togglePasswordView(false);
+        }
+
+        function updateUIState() {
+            const icon = document.getElementById('auth-icon'); const badge = document.getElementById('admin-badge');
+            if (isAdmin) { icon.setAttribute('data-lucide', 'unlock'); icon.classList.replace('text-slate-500', 'text-orange-500'); badge.classList.remove('hidden'); } 
+            else { icon.setAttribute('data-lucide', 'lock'); icon.classList.replace('text-orange-500', 'text-slate-500'); badge.classList.add('hidden'); }
+            lucide.createIcons();
+        }
+
+        async function saveAndLogout() { saveCurrentTabData(); await persistToStorage(); isAdmin = false; updateUIState(); renderTable(currentTab); alert("已儲存並登出"); }
+
+        function addNewRow() { saveCurrentTabData(); appData[currentTab].push({ id: (appData[currentTab].length + 1).toString(), name: "新項目", content: "內容描述", schedule: "適時", target: "100%" }); renderTable(currentTab); }
+        async function deleteRow(idx) { if (confirm("確定刪除？")) { saveCurrentTabData(); appData[currentTab].splice(idx, 1); if (attachmentsStore[currentTab]?.[idx]) delete attachmentsStore[currentTab][idx]; await persistToStorage(); renderTable(currentTab); } }
+
+        function handleYearFormat(input) {
+            let val = input.value.trim(); let match = val.match(/\d+/);
+            if (match) { let y = parseInt(match[0]); if (y > 1911) input.value = `${y}年度 (${y - 1911}年)`; else input.value = `${y + 1911}年度 (${y}年)`; }
+        }
+
+        function appendPercentage(input) {
+            let v = input.value.trim();
+            if (v !== "" && v !== "-" && v !== "N/A" && !isNaN(v)) { input.value = v + "%"; formatInput(input); }
+        }
+
+        function handleInputChange(input) {
+            let val = input.value.trim(); if (val.toUpperCase() === 'N') input.value = 'N/A';
+            formatInput(input);
+        }
+
+        function formatInput(input) { input.style.color = '#475569'; }
+
+        function handleKeyDown(e, input) {
+            const cell = input.parentElement; const row = cell.parentElement; const tbody = row.parentElement; const cells = Array.from(row.cells); const rows = Array.from(tbody.rows);
+            const rIdx = rows.indexOf(row); const cIdx = cells.indexOf(cell);
+            if (e.key === "Enter" || e.key === "ArrowDown") { e.preventDefault(); if (rIdx < rows.length - 1) rows[rIdx + 1].cells[cIdx].querySelector('input')?.focus(); } 
+            else if (e.key === "ArrowUp") { e.preventDefault(); if (rIdx > 0) rows[rIdx - 1].cells[cIdx].querySelector('input')?.focus(); }
+            else if (e.key === "ArrowRight") { if (input.selectionStart === input.value.length && cIdx < cells.length - 1) { const next = cells[cIdx + 1].querySelector('input'); if (next) { e.preventDefault(); next.focus(); next.select(); } } }
+            else if (e.key === "ArrowLeft") { if (input.selectionStart === 0 && cIdx > 0) { const prev = cells[cIdx - 1].querySelector('input'); if (prev) { e.preventDefault(); prev.focus(); prev.select(); } } }
+        }
+
+
+        function preparePrintLayout() {
+            saveCurrentTabData();
+            document.body.classList.add('ospms-printing');
+        }
+
+        function cleanupPrintLayout() {
+            document.body.classList.remove('ospms-printing');
+        }
+
+        function printCurrentReport() {
+            preparePrintLayout();
+            setTimeout(() => window.print(), 50);
+        }
+
+        window.addEventListener('beforeprint', preparePrintLayout);
+        window.addEventListener('afterprint', cleanupPrintLayout);
+
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
-        toggleModal('login-modal', false);
-        toggleModal('password-modal', false);
+        closeLoginModal();
+        closeAttachmentModal();
     }
-});
-        window.onload = initDB;
+});        
+
+        window.onload = () => { loadFromStorage(); };
     </script>
 </body>
 </html>
