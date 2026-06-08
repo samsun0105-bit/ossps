@@ -388,8 +388,7 @@
 
 /* 手機版左側功能列開關：桌機預設不顯示 */
 .sidebar-toggle,
-.sidebar-backdrop,
-#mobile-status-holder {
+.sidebar-backdrop {
     display: none;
 }
 
@@ -459,68 +458,19 @@
         height: 100vh;
         padding-left: 12px !important;
         padding-right: 12px !important;
-        padding-top: 96px !important;
+        padding-top: 68px !important;
         padding-bottom: 48px !important;
-        align-items: center;
     }
 
-    #mobile-action-bar {
-        width: 100%;
-        max-width: 430px;
-        margin-left: auto;
-        margin-right: auto;
-        margin-bottom: 18px;
+    main .sticky {
         top: 0;
-        justify-content: flex-end;
-        gap: 12px;
+        margin-bottom: 18px;
     }
 
-    #mobile-action-bar #status-tag {
-        display: none;
+    #status-tag {
+        font-size: 10px;
+        padding: 8px 12px;
     }
-
-    #mobile-action-bar .flex.space-x-3 {
-        justify-content: center;
-        width: 100%;
-    }
-
-    #mobile-action-bar button {
-        padding-left: 18px;
-        padding-right: 18px;
-        min-height: 52px;
-        font-size: 16px;
-    }
-
-    #report-preview {
-        margin-left: auto !important;
-        margin-right: auto !important;
-    }
-
-    #mobile-status-holder {
-        display: flex;
-        justify-content: center;
-        width: 100%;
-        max-width: 430px;
-        margin: 22px auto 0 auto;
-    }
-
-    #mobile-status-tag {
-        background: rgba(30, 41, 59, 0.9);
-        border: 1px solid #334155;
-        color: #cbd5e1;
-        font-size: 12px;
-        padding: 9px 16px;
-        border-radius: 999px;
-        backdrop-filter: blur(8px);
-    }
-
-    #mobile-status-tag.admin {
-        background: rgba(245, 158, 11, 0.14);
-        border-color: rgba(245, 158, 11, 0.5);
-        color: #f59e0b;
-        font-weight: 700;
-    }
-
 }
 
     </style>
@@ -662,7 +612,7 @@
         <!-- 右側主要區域 -->
         <main class="relative overflow-y-auto px-8 pt-8 pb-16 no-scrollbar flex flex-col bg-slate-900">
             <!-- 浮動動作列 -->
-            <div id="mobile-action-bar" class="no-print sticky top-0 mb-8 z-[60] flex justify-between items-center">
+            <div class="no-print sticky top-0 mb-8 z-[60] flex justify-between items-center">
                 <div id="status-tag" class="bg-slate-800/90 backdrop-blur px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-300">
                     目前狀態: 預覽模式
                 </div>
@@ -763,13 +713,6 @@
 
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- 手機版：狀態提示框移到程序書下方 -->
-            <div id="mobile-status-holder" class="no-print">
-                <div id="mobile-status-tag">
-                    目前狀態: 預覽模式
                 </div>
             </div>
 
@@ -1107,60 +1050,39 @@ async function verifyAdmin() {
             showToast("密碼修改成功");
         }
 
-function toggleAdmin(status) {
-    isAdmin = status;
+        function toggleAdmin(status) {
+            isAdmin = status;
+            document.getElementById('admin-info').classList.toggle('hidden', !isAdmin);
+            document.getElementById('category-admin-tools').classList.toggle('hidden', !isAdmin);
+            
+            document.getElementById('login-trigger').classList.toggle('hidden', isAdmin);
+            document.getElementById('save-report-btn').classList.toggle('hidden', !isAdmin);
+            document.getElementById('admin-delete-btn').classList.toggle('hidden', !isAdmin);
+            document.getElementById('status-tag').innerText = isAdmin ? "目前狀態: 管理員編輯模式" : "目前狀態: 預覽模式";
+            document.getElementById('status-tag').className = isAdmin 
+                ? "bg-amber-500/20 backdrop-blur px-4 py-2 rounded-full border border-amber-500/50 text-xs text-amber-500 font-bold"
+                : "bg-slate-800/80 backdrop-blur px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-300";
 
-    document.getElementById('admin-info').classList.toggle('hidden', !isAdmin);
-    document.getElementById('category-admin-tools').classList.toggle('hidden', !isAdmin);
+const editableConfigs = [
+    'company-name', 'report-main-title', 'document-code', 'field-type', 'field-method', 'field-name', 
+    'field-tools', 'field-protective', 'footer-dept', 'footer-author', 'footer-date'
+];
 
-    document.getElementById('login-trigger').classList.toggle('hidden', isAdmin);
-    document.getElementById('save-report-btn').classList.toggle('hidden', !isAdmin);
-    document.getElementById('admin-delete-btn').classList.toggle('hidden', !isAdmin);
+            editableConfigs.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) {
+                    el.contentEditable = isAdmin;
+                    el.classList.toggle('admin-edit-mode', isAdmin);
+                }
+            });
 
-    const statusText = isAdmin ? "目前狀態: 管理員編輯模式" : "目前狀態: 預覽模式";
-
-    document.getElementById('status-tag').innerText = statusText;
-    document.getElementById('status-tag').className = isAdmin
-        ? "bg-amber-500/20 backdrop-blur px-4 py-2 rounded-full border border-amber-500/50 text-xs text-amber-500 font-bold"
-        : "bg-slate-800/80 backdrop-blur px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-300";
-
-    const mobileStatusTag = document.getElementById('mobile-status-tag');
-    if (mobileStatusTag) {
-        mobileStatusTag.innerText = statusText;
-        mobileStatusTag.className = isAdmin ? 'admin' : '';
-    }
-
-    const editableConfigs = [
-        'company-name',
-        'report-main-title',
-        'document-code',
-        'field-type',
-        'field-method',
-        'field-name',
-        'field-tools',
-        'field-protective',
-        'footer-dept',
-        'footer-author',
-        'footer-date'
-    ];
-
-    editableConfigs.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.contentEditable = isAdmin;
-            el.classList.toggle('admin-edit-mode', isAdmin);
+            document.querySelectorAll('#steps-body td').forEach(td => {
+                td.contentEditable = isAdmin;
+                td.classList.toggle('admin-edit-mode', isAdmin);
+            });
+            showToast(isAdmin ? "已切換至管理模式" : "已退出管理模式");
+            updateDocumentCodeVisibility();
         }
-    });
-
-    document.querySelectorAll('#steps-body td').forEach(td => {
-        td.contentEditable = isAdmin;
-        td.classList.toggle('admin-edit-mode', isAdmin);
-    });
-
-    showToast(isAdmin ? "已切換至管理模式" : "已退出管理模式");
-    updateDocumentCodeVisibility();
-    updateMobilePreviewScale();
-}
 
         function updateDocumentCodeVisibility() {
             const wrapper = document.getElementById('document-code-wrapper');
@@ -1260,12 +1182,10 @@ document.getElementById('document-code').innerText = data.documentCode || '';
             const tbody = document.getElementById('steps-body');
             tbody.innerHTML = '';
             const steps = data.steps || [];
-if (steps.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-40 text-gray-300 italic">請在左側搜尋欄位輸入作業名稱開始產出...</td></tr>';
-    updateDocumentCodeVisibility();
-    updateMobilePreviewScale();
-    return;
-}
+            if (steps.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-40 text-gray-300 italic">請在左側搜尋欄位輸入作業名稱開始產出...</td></tr>';
+                return;
+            }
             steps.forEach(s => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -1278,7 +1198,6 @@ if (steps.length === 0) {
                 tbody.appendChild(tr);
             });
             updateDocumentCodeVisibility();
-updateMobilePreviewScale();
         }
 
         function renderExternalFile(data) {
@@ -1303,9 +1222,6 @@ updateMobilePreviewScale();
                     link.click();
                 };
             }
-
-updateMobilePreviewScale();
-
         }
 
         async function updateReportsDropdown() {
@@ -1558,18 +1474,9 @@ function updateMobilePreviewScale() {
 
         preview.style.transform = `scale(${scale})`;
         preview.style.transformOrigin = 'top center';
-
-        preview.style.marginLeft = 'auto';
-        preview.style.marginRight = 'auto';
-
-        const scaledHeight = preview.offsetHeight * scale;
-        preview.style.marginBottom = `${Math.max(24, scaledHeight * 0.02)}px`;
     } else {
         preview.style.transform = '';
         preview.style.transformOrigin = '';
-        preview.style.marginLeft = '';
-        preview.style.marginRight = '';
-        preview.style.marginBottom = '';
     }
 }
 
