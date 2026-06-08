@@ -464,15 +464,21 @@ main {
     align-items: flex-start;
 }
 
-    main .sticky {
-        top: 0;
-        margin-bottom: 18px;
-    }
+main .sticky {
+    top: 0;
+    margin-bottom: 18px;
+    width: 100%;
+    align-self: stretch;
+}
 
-    #status-tag {
-        font-size: 10px;
-        padding: 8px 12px;
-    }
+main .sticky > .flex {
+    margin-left: auto;
+}
+
+#status-tag {
+    font-size: 10px;
+    padding: 8px 12px;
+}
 
 #report-preview {
     margin-left: 0 !important;
