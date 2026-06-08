@@ -385,9 +385,123 @@
             z-index: 50;
             display: none;
         }
+
+/* 手機版左側功能列開關：桌機預設不顯示 */
+.sidebar-toggle,
+.sidebar-backdrop {
+    display: none;
+}
+
+/* 僅手機版啟用，不影響桌機與列印 */
+@media screen and (max-width: 768px) {
+
+    .main-layout {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 82vw;
+        max-width: 350px;
+        height: 100vh;
+        z-index: 90;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        box-shadow: 20px 0 45px rgba(0, 0, 0, 0.45);
+    }
+
+    .sidebar.mobile-open {
+        transform: translateX(0);
+    }
+
+    .sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 80;
+        background: rgba(15, 23, 42, 0.58);
+        backdrop-filter: blur(2px);
+    }
+
+    .sidebar-backdrop.show {
+        display: block;
+    }
+
+    .sidebar-toggle {
+        display: flex;
+        position: fixed;
+        top: calc(env(safe-area-inset-top) + 12px);
+        left: 12px;
+        z-index: 120;
+        width: 44px;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: #2563eb;
+        color: white;
+        font-size: 22px;
+        font-weight: 700;
+        box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+    }
+
+    body.sidebar-open {
+        overflow: hidden;
+    }
+
+main {
+    width: 100vw !important;
+    height: 100vh;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    padding-top: 68px !important;
+    padding-bottom: 48px !important;
+    overflow-x: hidden !important;
+    align-items: flex-start;
+}
+
+    main .sticky {
+        top: 0;
+        margin-bottom: 18px;
+    }
+
+    #status-tag {
+        font-size: 10px;
+        padding: 8px 12px;
+    }
+
+#report-preview {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    align-self: flex-start;
+}
+
+}
+
     </style>
 </head>
 <body>
+
+    <!-- 手機版：左側功能列開關，不影響桌機與列印 -->
+    <button
+        id="mobile-sidebar-toggle"
+        class="sidebar-toggle no-print"
+        onclick="toggleMobileSidebar()"
+        aria-label="開啟功能列"
+        aria-expanded="false">
+        ☰
+    </button>
+
+    <!-- 手機版：功能列展開時的背景遮罩 -->
+    <div
+        id="sidebar-backdrop"
+        class="sidebar-backdrop no-print"
+        onclick="toggleMobileSidebar(false)">
+    </div>
 
     <div class="main-layout">
         <!-- 左側導覽面板 -->
@@ -1077,10 +1191,12 @@ document.getElementById('document-code').innerText = data.documentCode || '';
             const tbody = document.getElementById('steps-body');
             tbody.innerHTML = '';
             const steps = data.steps || [];
-            if (steps.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-40 text-gray-300 italic">請在左側搜尋欄位輸入作業名稱開始產出...</td></tr>';
-                return;
-            }
+if (steps.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-40 text-gray-300 italic">請在左側搜尋欄位輸入作業名稱開始產出...</td></tr>';
+    updateDocumentCodeVisibility();
+    updateMobilePreviewScale();
+    return;
+}
             steps.forEach(s => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -1093,6 +1209,7 @@ document.getElementById('document-code').innerText = data.documentCode || '';
                 tbody.appendChild(tr);
             });
             updateDocumentCodeVisibility();
+updateMobilePreviewScale();
         }
 
         function renderExternalFile(data) {
@@ -1117,6 +1234,9 @@ document.getElementById('document-code').innerText = data.documentCode || '';
                     link.click();
                 };
             }
+
+ updateMobilePreviewScale();
+
         }
 
         async function updateReportsDropdown() {
@@ -1336,6 +1456,59 @@ async function downloadPDF() {
     }
 }
 
+function toggleMobileSidebar(forceOpen) {
+    const sidebar = document.querySelector('.sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    const toggleBtn = document.getElementById('mobile-sidebar-toggle');
+
+    if (!sidebar || !backdrop || !toggleBtn) return;
+
+    const shouldOpen =
+        typeof forceOpen === 'boolean'
+            ? forceOpen
+            : !sidebar.classList.contains('mobile-open');
+
+    sidebar.classList.toggle('mobile-open', shouldOpen);
+    backdrop.classList.toggle('show', shouldOpen);
+    document.body.classList.toggle('sidebar-open', shouldOpen);
+
+    toggleBtn.innerText = shouldOpen ? '×' : '☰';
+    toggleBtn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+    toggleBtn.setAttribute('aria-label', shouldOpen ? '收納功能列' : '開啟功能列');
+}
+
+function updateMobilePreviewScale() {
+    const preview = document.getElementById('report-preview');
+
+    if (!preview) return;
+
+    if (window.matchMedia('(max-width: 768px)').matches) {
+        const sidePadding = 12;
+        const availableWidth = window.innerWidth - sidePadding * 2;
+        const previewWidth = preview.offsetWidth;
+
+        const scale = Math.min(1.03, availableWidth / previewWidth);
+
+        const scaledWidth = previewWidth * scale;
+        const moveX = Math.max(0, (window.innerWidth - scaledWidth) / 2 - sidePadding);
+
+        preview.style.transformOrigin = 'top left';
+        preview.style.transform = `translateX(${moveX}px) scale(${scale})`;
+
+        preview.style.marginLeft = '0';
+        preview.style.marginRight = '0';
+
+        const scaledHeight = preview.offsetHeight * scale;
+        preview.style.marginBottom = `${Math.max(24, scaledHeight * 0.02)}px`;
+    } else {
+        preview.style.transform = '';
+        preview.style.transformOrigin = '';
+        preview.style.marginLeft = '';
+        preview.style.marginRight = '';
+        preview.style.marginBottom = '';
+    }
+}
+
         function showToast(msg, type = "success") {
             const t = document.getElementById('toast');
             const icon = document.getElementById('toast-icon');
@@ -1355,7 +1528,12 @@ document.addEventListener('keydown', function(event) {
         toggleModal('password-modal', false);
     }
 });
-        window.onload = initDB;
+        window.addEventListener('load', () => {
+    initDB();
+    updateMobilePreviewScale();
+});
+
+window.addEventListener('resize', updateMobilePreviewScale);
     </script>
 </body>
 </html>
