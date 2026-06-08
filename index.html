@@ -385,154 +385,9 @@
             z-index: 50;
             display: none;
         }
-
-/* 手機版左側功能列開關：桌機預設不顯示 */
-.sidebar-toggle,
-.sidebar-backdrop {
-    display: none;
-}
-
-/* 僅手機版啟用，不影響桌機與列印 */
-@media screen and (max-width: 768px) {
-
-    .main-layout {
-        display: block;
-        width: 100vw;
-        height: 100vh;
-        overflow: hidden;
-    }
-
-    .sidebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 82vw;
-        max-width: 350px;
-        height: 100vh;
-        z-index: 90;
-        transform: translateX(-100%);
-        transition: transform 0.25s ease;
-        box-shadow: 20px 0 45px rgba(0, 0, 0, 0.45);
-    }
-
-    .sidebar.mobile-open {
-        transform: translateX(0);
-    }
-
-    .sidebar-backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 80;
-        background: rgba(15, 23, 42, 0.58);
-        backdrop-filter: blur(2px);
-    }
-
-    .sidebar-backdrop.show {
-        display: block;
-    }
-
-    .sidebar-toggle {
-        display: flex;
-        position: fixed;
-        top: calc(env(safe-area-inset-top) + 12px);
-        left: 12px;
-        z-index: 120;
-        width: 44px;
-        height: 44px;
-        align-items: center;
-        justify-content: center;
-        border-radius: 999px;
-        background: #2563eb;
-        color: white;
-        font-size: 22px;
-        font-weight: 700;
-        box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
-    }
-
-    body.sidebar-open {
-        overflow: hidden;
-    }
-
-    main {
-        width: 100vw !important;
-        height: 100vh;
-        padding-left: 14px !important;
-        padding-right: 14px !important;
-        padding-top: 118px !important;
-        padding-bottom: 48px !important;
-        overflow-x: hidden !important;
-        align-items: center;
-    }
-
-    #mobile-action-bar {
-        position: sticky;
-        top: 0;
-        width: 100%;
-        margin-bottom: 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 10px;
-    }
-
-    #mobile-action-bar #status-tag {
-        display: block;
-        flex: 1;
-        min-width: 0;
-        max-width: calc(100vw - 190px);
-        font-size: 11px;
-        line-height: 1.2;
-        padding: 9px 12px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    #mobile-action-bar .flex.space-x-3 {
-        flex-shrink: 0;
-        display: flex;
-        justify-content: flex-end;
-        gap: 8px;
-    }
-
-    #mobile-action-bar button {
-        min-height: 38px;
-        padding: 8px 12px;
-        font-size: 13px;
-        border-radius: 8px;
-    }
-
-    #mobile-action-bar button svg {
-        width: 14px;
-        height: 14px;
-    }
-
-    #report-preview {
-        margin-left: auto !important;
-        margin-right: auto !important;
-    }
-}
-
     </style>
 </head>
 <body>
-
-    <!-- 手機版：左側功能列開關，不影響桌機與列印 -->
-    <button
-        id="mobile-sidebar-toggle"
-        class="sidebar-toggle no-print"
-        onclick="toggleMobileSidebar()"
-        aria-label="開啟功能列"
-        aria-expanded="false">
-        ☰
-    </button>
-
-    <!-- 手機版：功能列展開時的背景遮罩 -->
-    <div
-        id="sidebar-backdrop"
-        class="sidebar-backdrop no-print"
-        onclick="toggleMobileSidebar(false)">
-    </div>
 
     <div class="main-layout">
         <!-- 左側導覽面板 -->
@@ -652,7 +507,7 @@
         <!-- 右側主要區域 -->
         <main class="relative overflow-y-auto px-8 pt-8 pb-16 no-scrollbar flex flex-col bg-slate-900">
             <!-- 浮動動作列 -->
-            <div id="mobile-action-bar" class="no-print sticky top-0 mb-8 z-[60] flex justify-between items-center">
+            <div class="no-print sticky top-0 mb-8 z-[60] flex justify-between items-center">
                 <div id="status-tag" class="bg-slate-800/90 backdrop-blur px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-300">
                     目前狀態: 預覽模式
                 </div>
@@ -1122,7 +977,6 @@ const editableConfigs = [
             });
             showToast(isAdmin ? "已切換至管理模式" : "已退出管理模式");
             updateDocumentCodeVisibility();
-            updateMobilePreviewScale();
         }
 
         function updateDocumentCodeVisibility() {
@@ -1223,12 +1077,10 @@ document.getElementById('document-code').innerText = data.documentCode || '';
             const tbody = document.getElementById('steps-body');
             tbody.innerHTML = '';
             const steps = data.steps || [];
-if (steps.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-40 text-gray-300 italic">請在左側搜尋欄位輸入作業名稱開始產出...</td></tr>';
-    updateDocumentCodeVisibility();
-    updateMobilePreviewScale();
-    return;
-}
+            if (steps.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-40 text-gray-300 italic">請在左側搜尋欄位輸入作業名稱開始產出...</td></tr>';
+                return;
+            }
             steps.forEach(s => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -1265,9 +1117,6 @@ if (steps.length === 0) {
                     link.click();
                 };
             }
-
-updateMobilePreviewScale();
-
         }
 
         async function updateReportsDropdown() {
@@ -1487,53 +1336,6 @@ async function downloadPDF() {
     }
 }
 
-function toggleMobileSidebar(forceOpen) {
-    const sidebar = document.querySelector('.sidebar');
-    const backdrop = document.getElementById('sidebar-backdrop');
-    const toggleBtn = document.getElementById('mobile-sidebar-toggle');
-
-    if (!sidebar || !backdrop || !toggleBtn) return;
-
-    const shouldOpen =
-        typeof forceOpen === 'boolean'
-            ? forceOpen
-            : !sidebar.classList.contains('mobile-open');
-
-    sidebar.classList.toggle('mobile-open', shouldOpen);
-    backdrop.classList.toggle('show', shouldOpen);
-    document.body.classList.toggle('sidebar-open', shouldOpen);
-
-    toggleBtn.innerText = shouldOpen ? '×' : '☰';
-    toggleBtn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
-    toggleBtn.setAttribute('aria-label', shouldOpen ? '收納功能列' : '開啟功能列');
-}
-
-function updateMobilePreviewScale() {
-    const preview = document.getElementById('report-preview');
-
-    if (!preview) return;
-
-    if (window.matchMedia('(max-width: 768px)').matches) {
-        const availableWidth = window.innerWidth - 28;
-        const previewWidth = preview.offsetWidth;
-        const scale = Math.min(1.03, availableWidth / previewWidth);
-
-        preview.style.transform = `scale(${scale})`;
-        preview.style.transformOrigin = 'top center';
-        preview.style.marginLeft = 'auto';
-        preview.style.marginRight = 'auto';
-
-        const scaledHeight = preview.offsetHeight * scale;
-        preview.style.marginBottom = `${Math.max(24, scaledHeight * 0.02)}px`;
-    } else {
-        preview.style.transform = '';
-        preview.style.transformOrigin = '';
-        preview.style.marginLeft = '';
-        preview.style.marginRight = '';
-        preview.style.marginBottom = '';
-    }
-}
-
         function showToast(msg, type = "success") {
             const t = document.getElementById('toast');
             const icon = document.getElementById('toast-icon');
@@ -1553,12 +1355,7 @@ document.addEventListener('keydown', function(event) {
         toggleModal('password-modal', false);
     }
 });
-        window.addEventListener('load', () => {
-    initDB();
-    updateMobilePreviewScale();
-});
-
-window.addEventListener('resize', updateMobilePreviewScale);
+        window.onload = initDB;
     </script>
 </body>
 </html>
