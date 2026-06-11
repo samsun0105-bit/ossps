@@ -538,15 +538,19 @@ main .sticky > .flex {
                         <input type="text" id="search-input" placeholder="輸入作業名稱..." class="w-full bg-slate-800 border border-slate-700 rounded-lg py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-white">
                         <svg class="w-4 h-4 absolute left-3 top-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
-                    <button id="ai-generate-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg shadow-lg shadow-blue-900/20 flex items-center justify-center space-x-2 transition transform active:scale-95 text-sm">
-                        <span>✨ AI 自動產出報告</span>
-                    </button>
+<button id="ai-generate-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg shadow-lg shadow-blue-900/20 flex items-center justify-center space-x-2 transition transform active:scale-95 text-sm">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12h6m-6 4h6M7 4h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z" />
+    </svg>
+    <span>AI 產生標準程序</span>
+</button>
                 </div>
 
                 <!-- 報告分類 -->
                 <div id="drop-zone" class="space-y-4 mb-8 p-1 rounded-lg transition-all drop-zone">
                     <div class="flex justify-between items-center">
-                        <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">報告分類項目</label>
+                        <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">程序書分類</label>
                         <!-- 管理員分類操作按鈕 -->
                         <div id="category-admin-tools" class="hidden flex space-x-2">
                             <button onclick="document.getElementById('file-upload-input').click()" class="text-green-400 hover:text-green-300" title="上傳 PDF/Word">
@@ -572,7 +576,7 @@ main .sticky > .flex {
 
                 <!-- 已儲存報告清單 -->
                 <div class="space-y-4 mb-8">
-                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">選擇已儲存報告</label>
+                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">選擇已儲存程序書</label>
                     <div class="flex space-x-2">
                         <select id="reports-dropdown" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg py-3 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-300 transition cursor-pointer disabled:opacity-50" onchange="handleDropdownSelection()">
                             <option value="">-- 請先選擇分類 --</option>
@@ -1255,7 +1259,7 @@ updateMobilePreviewScale();
             req.onsuccess = (e) => {
                 const allItems = e.target.result;
                 const filtered = allItems.filter(item => item.category === category);
-                dropdown.innerHTML = filtered.length === 0 ? '<option value="">此分類尚無報告</option>' : '<option value="">-- 請選擇報告 --</option>';
+                dropdown.innerHTML = filtered.length === 0 ? '<option value="">此分類尚無程序書</option>' : '<option value="">-- 請選擇程序書 --</option>';
                 filtered.sort((a, b) => b.timestamp - a.timestamp).forEach(item => {
                     const opt = document.createElement('option');
                     opt.value = item.id;
@@ -1292,7 +1296,7 @@ updateMobilePreviewScale();
 
         function updateSaveBtnText() {
             const btnText = document.getElementById('save-btn-text');
-            if(btnText) btnText.innerText = currentLoadedReportId ? "儲存修改內容" : "儲存目前報告";
+            if(btnText) btnText.innerText = currentLoadedReportId ? "儲存修改內容" : "儲存目前程序書";
         }
 
         async function saveReport() {
@@ -1331,7 +1335,7 @@ updateMobilePreviewScale();
             const store = tx.objectStore('standards');
             store.put(report);
             tx.oncomplete = () => {
-                showToast(currentLoadedReportId ? "修改已儲存" : "新報告已收錄");
+                showToast(currentLoadedReportId ? "修改已儲存" : "新程序書已收錄");
                 updateReportsDropdown();
             };
         }
@@ -1342,15 +1346,15 @@ updateMobilePreviewScale();
             const id = parseInt(dropdown.value);
             
             if (!id || isNaN(id)) {
-                return showToast("請從下拉選單選擇一份已存報告進行移除", "error");
+                return showToast("請從下拉選單選擇一份已存程序書進行移除", "error");
             }
             
-            if (!confirm("⚠️ 警告：確定要永久移除這份報告嗎？此動作無法復原。")) return;
+            if (!confirm("⚠️ 警告：確定要永久移除這份程序書嗎？此動作無法復原。")) return;
             
             const tx = db.transaction('standards', 'readwrite');
             tx.objectStore('standards').delete(id);
             tx.oncomplete = () => {
-                showToast("報告已成功移除", "error");
+                showToast("程序書已成功移除", "error");
                 currentLoadedReportId = null;
                 updateSaveBtnText();
                 updateReportsDropdown();
