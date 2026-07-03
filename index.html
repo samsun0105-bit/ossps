@@ -2057,10 +2057,10 @@ function getSettingValue(key, fallbackValue = null) {
 }
 
 async function exportDB() {
-    if (!canExportData()) {
-        alert("請先登入使用者或管理者權限後再匯出資料。");
-        return;
-    }
+if (!canExportData()) {
+    showToast("請先登入使用者或管理者權限後再匯出資料。", "error");
+    return;
+}
 
     try {
         const standards = await getAllFromStore('standards');
