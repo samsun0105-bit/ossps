@@ -628,15 +628,42 @@ main .sticky {
     margin-bottom: 18px;
     width: 100%;
     align-self: stretch;
+
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
 }
 
-main .sticky > .flex {
-    margin-left: auto;
+main .sticky > .flex:first-child {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 8px;
+}
+
+main .sticky > .flex:last-child {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 8px;
 }
 
 #status-tag {
     font-size: 10px;
     padding: 8px 12px;
+    max-width: calc(100vw - 120px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#report-edit-toggle-btn {
+    flex-shrink: 0;
+    padding: 8px 13px;
+    font-size: 10px;
+}
+
+main .sticky button {
+    min-height: 38px;
 }
 
 #report-preview {
