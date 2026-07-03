@@ -113,6 +113,41 @@
     color: #fde68a;
 }
 
+/* 報表編輯切換按鈕：與權限狀態列分色，提升白底文件上方辨識度 */
+.report-edit-btn {
+    min-width: 74px;
+    padding: 8px 15px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    backdrop-filter: blur(14px);
+    transition: all 0.18s ease;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.24);
+}
+
+.report-edit-btn.is-view {
+    background: rgba(37, 99, 235, 0.96);
+    border: 1px solid rgba(147, 197, 253, 0.70);
+    color: #ffffff;
+}
+
+.report-edit-btn.is-view:hover {
+    background: rgba(29, 78, 216, 0.98);
+    transform: translateY(-1px);
+}
+
+.report-edit-btn.is-editing {
+    background: rgba(248, 250, 252, 0.96);
+    border: 1px solid rgba(15, 23, 42, 0.24);
+    color: #0f172a;
+}
+
+.report-edit-btn.is-editing:hover {
+    background: #ffffff;
+    transform: translateY(-1px);
+}
+
 /* 比照證照管理系統附件管理：垃圾桶與附件圖示尺寸 */
 .attachment-symbol {
     display: inline-flex;
@@ -776,9 +811,17 @@ main .sticky > .flex {
         <main class="relative overflow-y-auto px-8 pt-8 pb-16 no-scrollbar flex flex-col bg-slate-900">
             <!-- 浮動動作列 -->
             <div class="no-print sticky top-0 mb-8 z-[60] flex justify-between items-center">
-                <div id="status-tag" class="bg-slate-800/90 backdrop-blur px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-300">
-                    目前狀態: 預覽模式
-                </div>
+<div class="flex items-center gap-2">
+    <div id="status-tag" class="bg-slate-800/90 backdrop-blur px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-300">
+        目前狀態: 預覽模式
+    </div>
+
+<button id="report-edit-toggle-btn"
+        onclick="toggleReportEditMode()"
+        class="hidden report-edit-btn is-view">
+    編輯
+</button>
+</div>
                 <div class="flex space-x-3">
                     <button onclick="downloadPDF()" class="bg-white text-slate-900 px-4 py-2 rounded-lg text-sm font-bold shadow-xl flex items-center space-x-2 hover:bg-slate-100 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a 1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -1059,6 +1102,7 @@ let currentEditorPassword = DEFAULT_EDITOR_PASSWORD;
 let editorEnabled = true;
 
 let currentLoadedReportId = null;
+let isReportEditMode = false;
 
 /* 預覽者載入 JSON 專用暫存資料，不寫入 IndexedDB */
 let previewCategories = null;
@@ -1579,6 +1623,71 @@ return;
             alert("權限與密碼設定已更新成功！");
         }
 
+function canEditReportNow() {
+    return canEditData() && isReportEditMode;
+}
+
+function applyReportEditModeUI() {
+    const canEditNow = canEditReportNow();
+
+    const editBtn = document.getElementById('report-edit-toggle-btn');
+    if (editBtn) {
+        editBtn.classList.toggle('hidden', !canEditData());
+        editBtn.innerText = canEditNow ? "完成檢視" : "編輯";
+
+editBtn.classList.toggle('is-view', !canEditNow);
+editBtn.classList.toggle('is-editing', canEditNow);
+editBtn.title = canEditNow ? "完成編輯並切換為正式檢視" : "進入文件編輯模式";
+    }
+
+    const editableConfigs = [
+        'company-name',
+        'report-main-title',
+        'document-code',
+        'field-type',
+        'field-method',
+        'field-name',
+        'field-tools',
+        'field-protective',
+        'footer-dept',
+        'footer-author',
+        'footer-date'
+    ];
+
+    editableConfigs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.contentEditable = canEditNow;
+            el.classList.toggle('admin-edit-mode', canEditNow);
+        }
+    });
+
+    document.querySelectorAll('#steps-body td').forEach(td => {
+        td.contentEditable = canEditNow;
+        td.classList.toggle('admin-edit-mode', canEditNow);
+    });
+
+    const saveBtn = document.getElementById('save-report-btn');
+    if (saveBtn) {
+        saveBtn.classList.toggle('hidden', !canEditNow);
+    }
+
+    updateDocumentCodeVisibility();
+    initIcons();
+}
+
+function toggleReportEditMode() {
+    if (!canEditData()) {
+        showToast("請先登入使用者或管理者權限後再進入編輯模式。", "error");
+        return;
+    }
+
+    isReportEditMode = !isReportEditMode;
+    applyReportEditModeUI();
+
+    showToast(isReportEditMode ? "已進入編輯模式" : "已切換為檢視狀態");
+}
+
         function toggleAdmin(status) {
             if (!status) {
                 isAdmin = false;
@@ -1592,7 +1701,6 @@ return;
             if (adminInfo) adminInfo.classList.add('hidden');
 
 document.getElementById('category-admin-tools').classList.toggle('hidden', !canEdit);
-document.getElementById('save-report-btn').classList.toggle('hidden', !canEdit);
 
 const categoryDeleteBtn = document.getElementById('category-delete-btn');
 if (categoryDeleteBtn) {
@@ -1677,23 +1785,11 @@ if (isAdmin) {
     statusTag.className = "status-pill status-viewer px-4 py-2 rounded-full text-xs font-black";
 }
 
-            const editableConfigs = [
-                'company-name', 'report-main-title', 'document-code', 'field-type', 'field-method', 'field-name',
-                'field-tools', 'field-protective', 'footer-dept', 'footer-author', 'footer-date'
-            ];
+if (!canEdit) {
+    isReportEditMode = false;
+}
 
-            editableConfigs.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.contentEditable = canEdit;
-                    el.classList.toggle('admin-edit-mode', canEdit);
-                }
-            });
-
-            document.querySelectorAll('#steps-body td').forEach(td => {
-                td.contentEditable = canEdit;
-                td.classList.toggle('admin-edit-mode', canEdit);
-            });
+applyReportEditModeUI();
 
 renderCategories();
 updateReportsDropdown();
@@ -1813,15 +1909,16 @@ if (steps.length === 0) {
             steps.forEach(s => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td contenteditable="${canEditData()}" class="editable-field ${canEditData()?'admin-edit-mode':''}">${s.step}</td>
-                    <td contenteditable="${canEditData()}" class="editable-field ${canEditData()?'admin-edit-mode':''}">${s.desc}</td>
-                    <td contenteditable="${canEditData()}" class="editable-field ${canEditData()?'admin-edit-mode':''}">${s.danger}</td>
-                    <td contenteditable="${canEditData()}" class="editable-field ${canEditData()?'admin-edit-mode':''}">${s.safety}</td>
-                    <td contenteditable="${canEditData()}" class="editable-field ${canEditData()?'admin-edit-mode':''}">${s.emergency}</td>
+    <td contenteditable="${canEditReportNow()}" class="editable-field ${canEditReportNow() ? 'admin-edit-mode' : ''}">${s.step}</td>
+    <td contenteditable="${canEditReportNow()}" class="editable-field ${canEditReportNow() ? 'admin-edit-mode' : ''}">${s.desc}</td>
+    <td contenteditable="${canEditReportNow()}" class="editable-field ${canEditReportNow() ? 'admin-edit-mode' : ''}">${s.danger}</td>
+    <td contenteditable="${canEditReportNow()}" class="editable-field ${canEditReportNow() ? 'admin-edit-mode' : ''}">${s.safety}</td>
+    <td contenteditable="${canEditReportNow()}" class="editable-field ${canEditReportNow() ? 'admin-edit-mode' : ''}">${s.emergency}</td>
                 `;
                 tbody.appendChild(tr);
             });
-            updateDocumentCodeVisibility();
+applyReportEditModeUI();
+updateDocumentCodeVisibility();
 updateMobilePreviewScale();
         }
 
