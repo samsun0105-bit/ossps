@@ -1787,6 +1787,11 @@ const aiBtn = document.getElementById('ai-generate-btn');
 if (aiBtn) {
     const locked = !canUseAI();
 
+    /*
+     * 不使用 disabled，讓預覽者點擊時仍可觸發 generateAIReport()
+     * 再由 generateAIReport() 內部權限檢查阻擋，並顯示右下角提示。
+     * 這樣不會呼叫 /api/generate，也不會消耗 Gemini 額度。
+     */
     aiBtn.disabled = false;
 
     aiBtn.classList.toggle('action-locked', locked);
@@ -1841,6 +1846,10 @@ initIcons();
 async function generateAIReport() {
     if (!canUseAI()) {
         return showToast("請先登入使用者或管理者權限後再使用 AI 產生標準程序。", "error");
+    }
+
+    if (isPreviewDataActive()) {
+        return showToast("目前為預覽資料模式，請先正式載入資料或重新整理後再使用 AI 產生標準程序。", "error");
     }
 
     const query = document.getElementById('search-input').value.trim();
