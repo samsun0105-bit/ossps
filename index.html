@@ -620,7 +620,8 @@
 }
 
 /* 僅手機版啟用，不影響桌機與列印 */
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 768px),
+       screen and (orientation: landscape) and (max-height: 520px) and (max-width: 950px) {
 
     .main-layout {
         display: block;
@@ -779,8 +780,9 @@ main {
     }
 
 .top-action-bar {
-    left: 18px;
-    right: 4px;
+    left: var(--mobile-preview-left, 18px) !important;
+    right: auto !important;
+    width: var(--mobile-preview-width, calc(100vw - 36px)) !important;
     height: 40px;
 }
 
@@ -2662,12 +2664,21 @@ function toggleMobileSidebar(forceOpen) {
 
 function updateMobilePreviewScale() {
     const preview = document.getElementById('report-preview');
+    const main = document.querySelector('main');
 
     if (!preview) return;
 
+    const isPhoneLayout = window.matchMedia(
+        '(max-width: 768px), (orientation: landscape) and (max-height: 520px) and (max-width: 950px)'
+    ).matches;
+
+    const isLandscapePhone = window.matchMedia(
+        '(orientation: landscape) and (max-height: 520px) and (max-width: 950px)'
+    ).matches;
+
     /*
-     * 手機旋轉時，瀏覽器可能尚未完成版面重排。
-     * 先清除舊 transform，再重新計算，避免橫式轉直式時白色程序書被位移到畫面外。
+     * 先清除舊的 transform 與 CSS 變數。
+     * 這一步很重要，避免橫式轉直式後沿用舊位移，造成程序書卡半邊或歪一邊。
      */
     preview.style.transform = '';
     preview.style.transformOrigin = '';
@@ -2675,20 +2686,30 @@ function updateMobilePreviewScale() {
     preview.style.marginRight = '';
     preview.style.marginBottom = '';
 
-    if (window.matchMedia('(max-width: 768px)').matches) {
-        requestAnimationFrame(() => {
-            const sidePadding = window.matchMedia('(orientation: landscape) and (max-height: 520px)').matches
-                ? 18
-                : 12;
+    document.documentElement.style.removeProperty('--mobile-preview-left');
+    document.documentElement.style.removeProperty('--mobile-preview-width');
 
+if (main) {
+    main.scrollLeft = 0;
+    main.scrollTop = 0;
+}
+
+    if (!isPhoneLayout) {
+        return;
+    }
+
+    /*
+     * 等瀏覽器完成目前方向的版面重排後，再計算程序書寬度。
+     */
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const sidePadding = isLandscapePhone ? 18 : 12;
             const availableWidth = Math.max(1, window.innerWidth - sidePadding * 2);
 
             /*
-             * 使用 getBoundingClientRect 前已清除 transform，
-             * 可避免拿到被縮放後或舊方向下的錯誤寬度。
+             * 此時 transform 已清除，所以 offsetWidth 是程序書原始寬度。
              */
-const previewWidth = Math.max(1, preview.offsetWidth);
-
+            const previewWidth = Math.max(1, preview.offsetWidth);
             const scale = Math.min(1.03, availableWidth / previewWidth);
 
             const scaledWidth = previewWidth * scale;
@@ -2696,14 +2717,26 @@ const previewWidth = Math.max(1, preview.offsetWidth);
 
             preview.style.transformOrigin = 'top left';
             preview.style.transform = `translateX(${moveX}px) scale(${scale})`;
-
             preview.style.marginLeft = '0';
             preview.style.marginRight = '0';
 
             const scaledHeight = preview.offsetHeight * scale;
             preview.style.marginBottom = `${Math.max(24, scaledHeight * 0.02)}px`;
+
+            /*
+             * 再等 transform 真正套上後，讀取程序書實際畫面位置。
+             * PDF / 列印工具列會用這兩個 CSS 變數對齊程序書右邊線。
+             */
+            requestAnimationFrame(() => {
+                const rect = preview.getBoundingClientRect();
+
+                if (rect.width > 0) {
+                    document.documentElement.style.setProperty('--mobile-preview-left', `${Math.max(0, rect.left)}px`);
+                    document.documentElement.style.setProperty('--mobile-preview-width', `${rect.width}px`);
+                }
+            });
         });
-    }
+    });
 }
 
         function showToast(msg, type = "success") {
@@ -2738,6 +2771,8 @@ window.addEventListener('load', () => {
         initIcons();
 
         setTimeout(updateMobilePreviewScale, 120);
+        setTimeout(updateMobilePreviewScale, 420);
+        setTimeout(updateMobilePreviewScale, 900);
     });
 });
 
@@ -2747,8 +2782,13 @@ function scheduleMobilePreviewScaleUpdate() {
     clearTimeout(mobileScaleTimer);
 
     /*
-     * 手機旋轉時 resize / orientationchange 會連續觸發。
-     * 第一次先修正位置，第二次等瀏覽器完成版面穩定後再補算一次。
+     * 旋轉時先收合左側欄，避免側欄開啟狀態影響寬度計算。
+     */
+    toggleMobileSidebar(false);
+
+    /*
+     * 手機旋轉時，瀏覽器需要一點時間重新計算 viewport。
+     * 這裡分三次重算，避免橫式轉直式時程序書卡半邊或沒有置中。
      */
     mobileScaleTimer = setTimeout(() => {
         updateMobilePreviewScale();
@@ -2756,7 +2796,11 @@ function scheduleMobilePreviewScaleUpdate() {
         setTimeout(() => {
             updateMobilePreviewScale();
         }, 260);
-    }, 180);
+
+        setTimeout(() => {
+            updateMobilePreviewScale();
+        }, 620);
+    }, 120);
 }
 
 window.addEventListener('resize', scheduleMobilePreviewScaleUpdate);
