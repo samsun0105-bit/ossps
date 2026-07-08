@@ -127,13 +127,15 @@
 }
 
 .report-edit-btn.is-view {
-    background: rgba(37, 99, 235, 0.96);
-    border: 1px solid rgba(147, 197, 253, 0.70);
-    color: #ffffff;
+    background: rgba(120, 53, 15, 0.90);
+    border: 1px solid rgba(251, 191, 36, 0.50);
+    color: #fde68a;
 }
 
 .report-edit-btn.is-view:hover {
-    background: rgba(29, 78, 216, 0.98);
+    background: rgba(146, 64, 14, 0.96);
+    border-color: rgba(251, 191, 36, 0.65);
+    color: #fef3c7;
     transform: translateY(-1px);
 }
 
@@ -623,7 +625,8 @@ main {
     align-items: flex-start;
 }
 
-main .sticky {
+main .sticky,
+.top-action-bar {
     top: 0;
     margin-bottom: 18px;
     width: 100%;
@@ -636,31 +639,23 @@ main .sticky {
     gap: 8px;
 }
 
-main .sticky > .flex:first-child {
+.top-action-left {
     flex: 1 1 auto;
     min-width: 0;
     justify-content: flex-start;
     gap: 6px;
+    padding-left: 48px;
 }
 
-main .sticky > .flex:last-child {
+.top-action-right {
     flex: 0 0 auto;
     justify-content: flex-end;
     gap: 6px;
 }
 
-#status-tag {
-    font-size: 10px;
-    padding: 8px 10px;
-    max-width: 86px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
 #report-edit-toggle-btn {
     flex-shrink: 0;
-    min-width: 52px;
+    min-width: 58px;
     padding: 8px 10px;
     font-size: 10px;
 }
@@ -669,26 +664,24 @@ main .sticky button {
     min-height: 36px;
 }
 
-main .sticky .flex:last-child button {
+.top-action-right button {
     padding-left: 10px;
     padding-right: 10px;
     font-size: 11px;
 }
 
 @media screen and (max-width: 390px) {
-    #status-tag {
-        max-width: 78px;
-        padding-left: 8px;
-        padding-right: 8px;
+    .top-action-left {
+        padding-left: 46px;
     }
 
     #report-edit-toggle-btn {
-        min-width: 48px;
+        min-width: 52px;
         padding-left: 8px;
         padding-right: 8px;
     }
 
-    main .sticky .flex:last-child button {
+    .top-action-right button {
         padding-left: 8px;
         padding-right: 8px;
         font-size: 10px;
@@ -865,30 +858,32 @@ main .sticky .flex:last-child button {
 
         <!-- 右側主要區域 -->
         <main class="relative overflow-y-auto px-8 pt-8 pb-16 no-scrollbar flex flex-col bg-slate-900">
-            <!-- 浮動動作列 -->
-            <div class="no-print sticky top-0 mb-8 z-[60] flex justify-between items-center">
-<div class="flex items-center gap-2">
-<div id="status-tag" class="bg-slate-800/90 backdrop-blur px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-300">
-    預覽模式
-</div>
+<!-- 浮動動作列 -->
+<div class="no-print sticky top-0 mb-8 z-[60] top-action-bar flex justify-between items-center">
+    <div class="top-action-left flex items-center gap-2">
+        <button id="report-edit-toggle-btn"
+                onclick="toggleReportEditMode()"
+                class="hidden report-edit-btn is-view">
+            編輯
+        </button>
+    </div>
 
-<button id="report-edit-toggle-btn"
-        onclick="toggleReportEditMode()"
-        class="hidden report-edit-btn is-view">
-    編輯
-</button>
+    <div class="top-action-right flex items-center gap-2 sm:gap-3">
+        <button onclick="downloadPDF()" class="bg-white text-slate-900 px-4 py-2 rounded-lg text-sm font-bold shadow-xl flex items-center space-x-2 hover:bg-slate-100 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a 1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <span>PDF</span>
+        </button>
+
+        <button onclick="window.print()" class="bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-xl flex items-center space-x-2 hover:bg-slate-600 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+            </svg>
+            <span>列印</span>
+        </button>
+    </div>
 </div>
-                <div class="flex space-x-3">
-                    <button onclick="downloadPDF()" class="bg-white text-slate-900 px-4 py-2 rounded-lg text-sm font-bold shadow-xl flex items-center space-x-2 hover:bg-slate-100 transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a 1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        <span>PDF</span>
-                    </button>
-                    <button onclick="window.print()" class="bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-xl flex items-center space-x-2 hover:bg-slate-600 transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                        <span>列印</span>
-                    </button>
-                </div>
-            </div>
 
             <!-- A4 報表區 -->
             <div id="report-preview" class="a4-container">
@@ -1833,19 +1828,6 @@ if (aiBtn) {
         : "AI 產生標準程序";
 }
 
-            const statusTag = document.getElementById('status-tag');
-
-if (isAdmin) {
-    statusTag.innerText = "管理者模式";
-    statusTag.className = "status-pill status-admin px-4 py-2 rounded-full text-xs font-black";
-} else if (isEditor) {
-    statusTag.innerText = "使用者模式";
-    statusTag.className = "status-pill status-editor px-4 py-2 rounded-full text-xs font-black";
-} else {
-    statusTag.innerText = "預覽模式";
-    statusTag.className = "status-pill status-viewer px-4 py-2 rounded-full text-xs font-black";
-}
-
 if (!canEdit) {
     isReportEditMode = false;
 }
@@ -2265,12 +2247,10 @@ if (!canExportData()) {
         document.body.appendChild(a);
         a.click();
 
-        setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }, 0);
-
-        alert("匯出資料成功！");
+setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}, 0);
 
     } catch (err) {
         console.error("匯出資料失敗：", err);
@@ -2344,7 +2324,7 @@ async function importDB(event) {
                 updateDataActionButtons();
                 initIcons();
 
-                alert("載入預覽成功！");
+                alert("預覽資料載入成功！");
                 return;
             }
 
