@@ -1614,20 +1614,40 @@ exportBtn.title = canExportData()
             }
         }
 
-        function removeCategory() {
-            if (!canDeleteData()) {
-                return showToast("只有管理者可以刪除分類。", "error");
-            }
-            const name = document.getElementById('category-select').value;
-            if (!name) return;
-            if (confirm(`確定要刪除「${name}」分類嗎？\n注意：這不會刪除該分類下的報告，但該些報告將暫時無法在選單中被找到。`)) {
-                categories = categories.filter(c => c !== name);
-                saveCategoriesToDB();
-                renderCategories();
-                updateReportsDropdown();
-                showToast("分類已刪除", "error");
-            }
+function removeCategory() {
+    if (!canDeleteData()) {
+        return showToast("只有管理者可以刪除分類。", "error");
+    }
+
+    const name = document.getElementById('category-select').value;
+    if (!name) return;
+
+    const tx = db.transaction('standards', 'readonly');
+    const store = tx.objectStore('standards');
+    const req = store.getAll();
+
+    req.onsuccess = () => {
+        const allItems = req.result || [];
+        const hasReports = allItems.some(item => item.category === name);
+
+        if (hasReports) {
+            alert(`無法刪除「${name}」分類。\n\n此分類下仍有已儲存的程序書或附件。\n請先移動、刪除或重新整理該分類下的資料後，再刪除分類。`);
+            return;
         }
+
+        if (confirm(`確定要刪除「${name}」分類嗎？`)) {
+            categories = categories.filter(c => c !== name);
+            saveCategoriesToDB();
+            renderCategories();
+            updateReportsDropdown();
+            showToast("分類已刪除", "error");
+        }
+    };
+
+    req.onerror = () => {
+        showToast("檢查分類資料失敗，請稍後再試。", "error");
+    };
+}
 
         function setCurrentDate() {
             const now = new Date();
