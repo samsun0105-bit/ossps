@@ -1631,7 +1631,7 @@ function removeCategory() {
         const hasReports = allItems.some(item => item.category === name);
 
         if (hasReports) {
-            alert(`無法刪除「${name}」分類。\n\n此分類下仍有已儲存的程序書或附件。\n請先移動、刪除或重新整理該分類下的資料後，再刪除分類。`);
+            alert(`無法刪除「${name}」分類。\n\n此分類下仍有已儲存程序書。\n請先刪除該分類內的程序書後，再刪除此分類。`);
             return;
         }
 
