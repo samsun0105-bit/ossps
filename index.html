@@ -71,6 +71,72 @@
     transition: all 0.2s;
 }
 
+.auth-action-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    align-items: center;
+    min-height: 36px;
+}
+
+.auth-action-btn {
+    height: 34px;
+    padding: 0 4px;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 8px;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    font-size: 12px;
+    font-weight: 900;
+    white-space: nowrap;
+    transition: all 0.18s ease;
+}
+
+.auth-action-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.auth-login-btn {
+    grid-column: 1;
+    justify-self: start;
+    justify-content: flex-start;
+    color: #94a3b8;
+}
+
+.auth-login-btn:hover {
+    color: #ffffff;
+}
+
+.auth-permission-btn {
+    grid-column: 2;
+    justify-self: center;
+    justify-content: center;
+    color: #94a3b8;
+}
+
+.auth-permission-btn:hover {
+    color: #fcd34d;
+}
+
+.auth-save-btn {
+    grid-column: 3;
+    justify-self: end;
+    justify-content: flex-end;
+    color: #6ee7b7;
+}
+
+.auth-save-btn:hover {
+    color: #ecfdf5;
+}
+
+.auth-action-btn.hidden {
+    display: none !important;
+}
+
 .db-action-btn:hover {
     background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
@@ -712,11 +778,11 @@ main {
         padding-right: 18px !important;
     }
 
-    .top-action-bar {
-        left: 18px;
-        right: 18px;
-        height: 40px;
-    }
+.top-action-bar {
+    left: 18px;
+    right: 4px;
+    height: 40px;
+}
 
     .sidebar-toggle {
         top: calc(env(safe-area-inset-top) + 10px);
@@ -872,23 +938,31 @@ main {
                     <div id="admin-info" class="hidden"></div>
 
                     <div id="user-controls" class="space-y-4">
-                        <div class="flex items-center gap-2">
-                            <button id="login-trigger" class="flex-1 text-left text-sm text-slate-400 hover:text-white flex items-center space-x-2 py-2 transition px-2 rounded-lg hover:bg-slate-800/60">
-                                <svg id="login-trigger-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                                </svg>
-                                <span id="login-trigger-text">權限登入</span>
-                            </button>
+<div class="auth-action-row">
+    <button id="login-trigger" class="auth-action-btn auth-login-btn">
+        <svg id="login-trigger-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+        </svg>
+        <span id="login-trigger-text">權限登入</span>
+    </button>
 
-<button id="permission-settings-btn"
-        onclick="toggleModal('password-modal', true)"
-        class="hidden text-sm text-slate-400 hover:text-amber-300 items-center gap-1.5 py-2 px-1 transition"
-        title="權限與密碼設定">
-    <i data-lucide="settings" class="w-4 h-4"></i>
-    <span class="text-xs font-bold">權限設定</span>
-</button>
-                        </div>
+    <button id="permission-settings-btn"
+            onclick="toggleModal('password-modal', true)"
+            class="hidden auth-action-btn auth-permission-btn"
+            title="權限與密碼設定">
+        <i data-lucide="settings" class="w-4 h-4"></i>
+        <span>權限設定</span>
+    </button>
+
+    <button id="save-report-btn"
+            onclick="saveReport()"
+            class="hidden auth-action-btn auth-save-btn"
+            title="儲存目前程序書">
+        <i data-lucide="save" class="w-4 h-4"></i>
+        <span id="save-btn-text">儲存</span>
+    </button>
+</div>
 
 <div class="grid grid-cols-2 gap-2">
     <button id="export-db-btn" onclick="exportDB()" class="db-action-btn">
@@ -904,11 +978,7 @@ main {
 
 <input type="file" id="import-file" class="hidden" accept=".json" onchange="importDB(event)">
                     </div>
-                    
-<button id="save-report-btn" class="hidden w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center space-x-2 transition">
-    <i data-lucide="save" class="w-5 h-5"></i>
-    <span id="save-btn-text">儲存目前程序書</span>
-</button>
+                
                 </div>
                 
                 <div class="h-8"></div>
@@ -1733,6 +1803,26 @@ return;
             alert("權限與密碼設定已更新成功！");
         }
 
+function hasCurrentReportContent() {
+    const overlay = document.getElementById('file-preview-overlay');
+    if (overlay && overlay.style.display === 'block') {
+        return false;
+    }
+
+    const fieldName = document.getElementById('field-name')?.innerText.trim() || '';
+    const fieldType = document.getElementById('field-type')?.innerText.trim() || '';
+
+    const hasBasicInfo =
+        (fieldName && fieldName !== '--') ||
+        (fieldType && fieldType !== '--');
+
+    const hasStepRows = Array.from(document.querySelectorAll('#steps-body tr')).some(row => {
+        return row.querySelectorAll('td').length === 5;
+    });
+
+    return hasBasicInfo || hasStepRows;
+}
+
 function canEditReportNow() {
     return canEditData() && isReportEditMode;
 }
@@ -1777,10 +1867,10 @@ editBtn.title = canEditNow ? "完成編輯並切換為正式檢視" : "進入文
         td.classList.toggle('admin-edit-mode', canEditNow);
     });
 
-    const saveBtn = document.getElementById('save-report-btn');
-    if (saveBtn) {
-        saveBtn.classList.toggle('hidden', !canEditNow);
-    }
+const saveBtn = document.getElementById('save-report-btn');
+if (saveBtn) {
+    saveBtn.classList.toggle('hidden', !canEditData() || !hasCurrentReportContent());
+}
 
     updateDocumentCodeVisibility();
     initIcons();
@@ -1835,7 +1925,7 @@ if (reportSelectRow) {
 
             if (loginTrigger && loginTriggerText && loginTriggerIcon) {
                 if (canEdit) {
-                    loginTriggerText.innerText = "登出";
+                    loginTriggerText.innerText = "登出系統";
                     loginTrigger.onclick = () => toggleAdmin(false);
                     loginTrigger.classList.remove('text-slate-400');
                     loginTrigger.classList.toggle('text-amber-300', isAdmin);
@@ -1863,7 +1953,6 @@ if (reportSelectRow) {
 const permissionSettingsBtn = document.getElementById('permission-settings-btn');
 if (permissionSettingsBtn) {
     permissionSettingsBtn.classList.toggle('hidden', !isAdmin);
-    permissionSettingsBtn.classList.toggle('inline-flex', isAdmin);
 }
 
 const aiBtn = document.getElementById('ai-generate-btn');
@@ -2009,6 +2098,7 @@ document.getElementById('document-code').innerText = data.documentCode || '';
 if (steps.length === 0) {
     tbody.innerHTML = '<tr><td colspan="5" class="text-center py-40 text-gray-300 italic">請在左側搜尋欄位輸入作業名稱開始產出...</td></tr>';
     updateDocumentCodeVisibility();
+    applyReportEditModeUI();
     updateMobilePreviewScale();
     return;
 }
@@ -2160,19 +2250,30 @@ updateMobilePreviewScale();
             };
         }
 
-        function updateSaveBtnText() {
-            const btnText = document.getElementById('save-btn-text');
-            if(btnText) btnText.innerText = currentLoadedReportId ? "儲存修改內容" : "儲存目前程序書";
-        }
+function updateSaveBtnText() {
+    const btnText = document.getElementById('save-btn-text');
+    if (btnText) {
+        btnText.innerText = currentLoadedReportId ? "儲存修改" : "儲存";
+    }
 
-        async function saveReport() {
-            if (!canEditData()) {
-                return showToast("請先登入使用者或管理者權限後再儲存程序書。", "error");
-            }
-            // 如果當前是外部檔案預覽模式，不支援在此處編輯儲存
-            if (document.getElementById('file-preview-overlay').style.display === 'block') {
-                return showToast("外部檔案不支援在線編輯", "error");
-            }
+    const saveBtn = document.getElementById('save-report-btn');
+    if (saveBtn) {
+        saveBtn.title = currentLoadedReportId ? "儲存目前程序書修改內容" : "儲存目前程序書";
+    }
+}
+
+async function saveReport() {
+    if (!canEditData()) {
+        return showToast("請先登入使用者或管理者權限後再儲存程序書。", "error");
+    }
+
+    if (document.getElementById('file-preview-overlay').style.display === 'block') {
+        return showToast("外部檔案不支援在線編輯", "error");
+    }
+
+    if (!hasCurrentReportContent()) {
+        return showToast("目前沒有可儲存的程序書內容。", "error");
+    }
 
             const steps = [];
             const rows = document.querySelectorAll('#steps-body tr');
@@ -2190,7 +2291,7 @@ updateMobilePreviewScale();
                 documentCode: document.getElementById('document-code').innerText,
                 type: document.getElementById('field-type').innerText,
                 method: document.getElementById('field-method').innerText,
-                name: document.getElementById('field-name').innerText,
+                name: document.getElementById('field-name').innerText.trim() || '未命名程序書',
                 tools: document.getElementById('field-tools').innerText,
                 protective: document.getElementById('field-protective').innerText,
                 footerDept: document.getElementById('footer-dept').innerText,
@@ -2199,13 +2300,22 @@ updateMobilePreviewScale();
                 steps: steps, category: document.getElementById('category-select').value, timestamp: Date.now()
             };
             if (currentLoadedReportId) report.id = currentLoadedReportId;
-            const tx = db.transaction('standards', 'readwrite');
-            const store = tx.objectStore('standards');
-            store.put(report);
-            tx.oncomplete = () => {
-                showToast(currentLoadedReportId ? "修改已儲存" : "新程序書已收錄");
-                updateReportsDropdown();
-            };
+const isNewReport = !currentLoadedReportId;
+
+const tx = db.transaction('standards', 'readwrite');
+const store = tx.objectStore('standards');
+
+const saveReq = store.put(report);
+
+saveReq.onsuccess = () => {
+    currentLoadedReportId = saveReq.result;
+    updateSaveBtnText();
+};
+
+tx.oncomplete = () => {
+    showToast(isNewReport ? "新程序書已收錄" : "修改已儲存");
+    updateReportsDropdown();
+};
         }
 
         async function deleteSelectedReport() {
