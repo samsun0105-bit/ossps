@@ -127,15 +127,15 @@
 }
 
 .report-edit-btn.is-view {
-    background: rgba(120, 53, 15, 0.90);
-    border: 1px solid rgba(251, 191, 36, 0.50);
-    color: #fde68a;
+    background: rgba(30, 41, 59, 0.94);
+    border: 1px solid rgba(148, 163, 184, 0.42);
+    color: #e2e8f0;
 }
 
 .report-edit-btn.is-view:hover {
-    background: rgba(146, 64, 14, 0.96);
-    border-color: rgba(251, 191, 36, 0.65);
-    color: #fef3c7;
+    background: rgba(51, 65, 85, 0.96);
+    border-color: rgba(203, 213, 225, 0.55);
+    color: #ffffff;
     transform: translateY(-1px);
 }
 
@@ -619,60 +619,71 @@ main {
     height: 100vh;
     padding-left: 12px !important;
     padding-right: 12px !important;
-    padding-top: 68px !important;
+    padding-top: 72px !important;
     padding-bottom: 48px !important;
     overflow-x: hidden !important;
     align-items: flex-start;
+    background: #0f172a !important;
 }
 
-main .sticky,
 .top-action-bar {
-    top: 0;
-    margin-bottom: 18px;
-    width: 100%;
-    align-self: stretch;
+    position: fixed !important;
+    top: calc(env(safe-area-inset-top) + 12px) !important;
+    left: 12px;
+    right: 12px;
+    z-index: 110;
+    height: 44px;
+    margin-bottom: 0 !important;
+    width: auto !important;
 
     display: flex;
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+
+    pointer-events: none;
 }
 
 .top-action-left {
     flex: 1 1 auto;
     min-width: 0;
+    display: flex;
+    align-items: center;
     justify-content: flex-start;
     gap: 6px;
-    padding-left: 48px;
+    padding-left: 52px;
+    pointer-events: auto;
 }
 
 .top-action-right {
     flex: 0 0 auto;
+    display: flex;
+    align-items: center;
     justify-content: flex-end;
     gap: 6px;
+    pointer-events: auto;
 }
 
 #report-edit-toggle-btn {
     flex-shrink: 0;
     min-width: 58px;
-    padding: 8px 10px;
+    height: 38px;
+    padding: 0 10px;
     font-size: 10px;
 }
 
-main .sticky button {
-    min-height: 36px;
-}
-
 .top-action-right button {
+    min-height: 38px;
+    height: 38px;
     padding-left: 10px;
     padding-right: 10px;
     font-size: 11px;
+    border-radius: 999px;
 }
 
 @media screen and (max-width: 390px) {
     .top-action-left {
-        padding-left: 46px;
+        padding-left: 50px;
     }
 
     #report-edit-toggle-btn {
@@ -692,6 +703,54 @@ main .sticky button {
     margin-left: 0 !important;
     margin-right: 0 !important;
     align-self: flex-start;
+}
+
+@media screen and (orientation: landscape) and (max-height: 520px) {
+    main {
+        padding-top: 62px !important;
+        padding-left: 18px !important;
+        padding-right: 18px !important;
+    }
+
+    .top-action-bar {
+        left: 18px;
+        right: 18px;
+        height: 40px;
+    }
+
+    .sidebar-toggle {
+        top: calc(env(safe-area-inset-top) + 10px);
+        left: 18px;
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+    }
+
+    .top-action-left {
+        padding-left: 50px;
+    }
+
+    #report-edit-toggle-btn {
+        height: 36px;
+        min-width: 58px;
+        font-size: 10px;
+    }
+
+    .top-action-right {
+        margin-left: auto;
+    }
+
+    .top-action-right button {
+        height: 36px;
+        min-height: 36px;
+        padding-left: 12px;
+        padding-right: 12px;
+        font-size: 11px;
+    }
+
+    #report-preview {
+        align-self: center;
+    }
 }
 
 }
@@ -2496,30 +2555,44 @@ function updateMobilePreviewScale() {
 
     if (!preview) return;
 
+    /*
+     * 手機旋轉時，瀏覽器可能尚未完成版面重排。
+     * 先清除舊 transform，再重新計算，避免橫式轉直式時白色程序書被位移到畫面外。
+     */
+    preview.style.transform = '';
+    preview.style.transformOrigin = '';
+    preview.style.marginLeft = '';
+    preview.style.marginRight = '';
+    preview.style.marginBottom = '';
+
     if (window.matchMedia('(max-width: 768px)').matches) {
-        const sidePadding = 12;
-        const availableWidth = window.innerWidth - sidePadding * 2;
-        const previewWidth = preview.offsetWidth;
+        requestAnimationFrame(() => {
+            const sidePadding = window.matchMedia('(orientation: landscape) and (max-height: 520px)').matches
+                ? 18
+                : 12;
 
-        const scale = Math.min(1.03, availableWidth / previewWidth);
+            const availableWidth = Math.max(1, window.innerWidth - sidePadding * 2);
 
-        const scaledWidth = previewWidth * scale;
-        const moveX = Math.max(0, (window.innerWidth - scaledWidth) / 2 - sidePadding);
+            /*
+             * 使用 getBoundingClientRect 前已清除 transform，
+             * 可避免拿到被縮放後或舊方向下的錯誤寬度。
+             */
+const previewWidth = Math.max(1, preview.offsetWidth);
 
-        preview.style.transformOrigin = 'top left';
-        preview.style.transform = `translateX(${moveX}px) scale(${scale})`;
+            const scale = Math.min(1.03, availableWidth / previewWidth);
 
-        preview.style.marginLeft = '0';
-        preview.style.marginRight = '0';
+            const scaledWidth = previewWidth * scale;
+            const moveX = Math.max(0, (window.innerWidth - scaledWidth) / 2 - sidePadding);
 
-        const scaledHeight = preview.offsetHeight * scale;
-        preview.style.marginBottom = `${Math.max(24, scaledHeight * 0.02)}px`;
-    } else {
-        preview.style.transform = '';
-        preview.style.transformOrigin = '';
-        preview.style.marginLeft = '';
-        preview.style.marginRight = '';
-        preview.style.marginBottom = '';
+            preview.style.transformOrigin = 'top left';
+            preview.style.transform = `translateX(${moveX}px) scale(${scale})`;
+
+            preview.style.marginLeft = '0';
+            preview.style.marginRight = '0';
+
+            const scaledHeight = preview.offsetHeight * scale;
+            preview.style.marginBottom = `${Math.max(24, scaledHeight * 0.02)}px`;
+        });
     }
 }
 
@@ -2553,11 +2626,31 @@ window.addEventListener('load', () => {
         toggleAdmin(false);
         updateDataActionButtons();
         initIcons();
+
+        setTimeout(updateMobilePreviewScale, 120);
     });
-    updateMobilePreviewScale();
 });
 
-window.addEventListener('resize', updateMobilePreviewScale);
+let mobileScaleTimer = null;
+
+function scheduleMobilePreviewScaleUpdate() {
+    clearTimeout(mobileScaleTimer);
+
+    /*
+     * 手機旋轉時 resize / orientationchange 會連續觸發。
+     * 第一次先修正位置，第二次等瀏覽器完成版面穩定後再補算一次。
+     */
+    mobileScaleTimer = setTimeout(() => {
+        updateMobilePreviewScale();
+
+        setTimeout(() => {
+            updateMobilePreviewScale();
+        }, 260);
+    }, 180);
+}
+
+window.addEventListener('resize', scheduleMobilePreviewScaleUpdate);
+window.addEventListener('orientationchange', scheduleMobilePreviewScaleUpdate);
     </script>
 </body>
 </html>
