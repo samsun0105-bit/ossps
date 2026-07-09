@@ -149,9 +149,23 @@
 }
 
 .action-locked:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: #94a3b8;
-    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: #94a3b8 !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    transform: none !important;
+}
+
+#ai-generate-btn.action-locked {
+    pointer-events: auto;
+    cursor: default !important;
+}
+
+#ai-generate-btn.action-locked:hover,
+#ai-generate-btn.action-locked:active {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    transform: none !important;
+    filter: grayscale(0.18);
 }
 
 /* 狀態列：深色玻璃感，避免滑到白底報表時太亮不清楚 */
@@ -177,6 +191,27 @@
     background: rgba(120, 53, 15, 0.90);
     border: 1px solid rgba(251, 191, 36, 0.50);
     color: #fde68a;
+}
+
+.report-reset-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    background: rgba(30, 41, 59, 0.94);
+    border: 1px solid rgba(148, 163, 184, 0.42);
+    color: #e2e8f0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.24);
+    transition: all 0.18s ease;
+}
+
+.report-reset-btn:hover {
+    background: rgba(51, 65, 85, 0.96);
+    color: #ffffff;
+    transform: translateY(-1px);
 }
 
 /* 報表編輯切換按鈕：與權限狀態列分色，提升白底文件上方辨識度 */
@@ -991,13 +1026,20 @@ main {
         <main class="relative overflow-y-auto px-8 pt-8 pb-16 no-scrollbar flex flex-col bg-slate-900">
 <!-- 浮動動作列 -->
 <div class="no-print sticky top-0 mb-8 z-[60] top-action-bar flex justify-between items-center">
-    <div class="top-action-left flex items-center gap-2">
-        <button id="report-edit-toggle-btn"
-                onclick="toggleReportEditMode()"
-                class="hidden report-edit-btn is-view">
-            編輯
-        </button>
-    </div>
+<div class="top-action-left flex items-center gap-2">
+    <button id="reset-report-btn"
+            onclick="resetReportToBlank()"
+            class="report-reset-btn"
+            title="回到原始畫面">
+        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+    </button>
+
+    <button id="report-edit-toggle-btn"
+            onclick="toggleReportEditMode()"
+            class="hidden report-edit-btn is-view">
+        編輯
+    </button>
+</div>
 
     <div class="top-action-right flex items-center gap-2 sm:gap-3">
         <button onclick="downloadPDF()" class="bg-white text-slate-900 px-4 py-2 rounded-lg text-sm font-bold shadow-xl flex items-center space-x-2 hover:bg-slate-100 transition">
@@ -1356,12 +1398,10 @@ function updateDataActionButtons() {
             <span class="upload">匯出資料</span>
         `;
 exportBtn.classList.toggle('action-locked', !canExportData());
-exportBtn.classList.toggle('cursor-help', !canExportData());
+exportBtn.classList.remove('cursor-help');
 exportBtn.classList.toggle('cursor-pointer', canExportData());
-
-exportBtn.title = canExportData()
-    ? "匯出系統資料與附件，不包含密碼與權限設定"
-    : "請先登入使用者或管理者權限後再匯出資料";
+exportBtn.classList.toggle('cursor-default', !canExportData());
+exportBtn.removeAttribute('title');
     }
 
     if (importBtn) {
@@ -1825,6 +1865,44 @@ return;
             alert("權限與密碼設定已更新成功！");
         }
 
+function resetReportToBlank(silent = false) {
+    if (!hasCurrentReportContent()) {
+        if (!silent) showToast("目前已是空白頁面。");
+        return;
+    }
+
+    if (!confirm("確定要清除目前程序書內容，回到空白頁面嗎？")) {
+        return;
+    }
+
+    currentLoadedReportId = null;
+    isReportEditMode = false;
+
+    document.getElementById('file-preview-overlay').style.display = 'none';
+    document.getElementById('report-content-wrapper').style.display = 'block';
+
+    renderReport({
+        company: '',
+        mainTitle: '安全作業標準程序書',
+        documentCode: '',
+        type: '--',
+        method: '--',
+        name: '--',
+        tools: '--',
+        protective: '--',
+        footerDept: '',
+        footerAuthor: '',
+        footerDate: '',
+        steps: []
+    });
+
+    setCurrentDate();
+    updateSaveBtnText();
+    applyReportEditModeUI();
+    updateMobilePreviewScale();
+    showToast("已回到原始畫面。");
+}
+
 function hasCurrentReportContent() {
     const overlay = document.getElementById('file-preview-overlay');
     if (overlay && overlay.style.display === 'block') {
@@ -1990,12 +2068,10 @@ if (aiBtn) {
 
     aiBtn.classList.toggle('action-locked', locked);
     aiBtn.classList.toggle('opacity-50', locked);
-    aiBtn.classList.toggle('cursor-help', locked);
-    aiBtn.classList.toggle('cursor-pointer', !locked);
-
-    aiBtn.title = locked
-        ? "請先登入使用者或管理者權限後再使用 AI 產生標準程序"
-        : "AI 產生標準程序";
+aiBtn.classList.remove('cursor-help');
+aiBtn.classList.toggle('cursor-pointer', !locked);
+aiBtn.classList.toggle('cursor-default', locked);
+aiBtn.removeAttribute('title');
 }
 
 if (!canEdit) {
@@ -2083,9 +2159,9 @@ steps 必須是 array，每一筆包含 step, desc, danger, safety, emergency。
 
         currentLoadedReportId = null;
         updateSaveBtnText();
-        renderReport(result);
-        setCurrentDate();
-        showToast("AI 報告生成完成");
+renderReport(result);
+setCurrentDate();
+showToast("AI 報告生成完成");
 
     } catch (error) {
         console.error("生成錯誤：", error);
@@ -2107,9 +2183,9 @@ steps 必須是 array，每一筆包含 step, desc, danger, safety, emergency。
             document.getElementById('field-name').innerText = data.name || '--';
             document.getElementById('field-tools').innerText = data.tools || '--';
             document.getElementById('field-protective').innerText = data.protective || '--';
-            if(data.footerDept) document.getElementById('footer-dept').innerText = data.footerDept;
-            if(data.footerAuthor) document.getElementById('footer-author').innerText = data.footerAuthor;
-            if(data.footerDate) document.getElementById('footer-date').innerText = data.footerDate;
+document.getElementById('footer-dept').innerText = data.footerDept || '';
+document.getElementById('footer-author').innerText = data.footerAuthor || '';
+document.getElementById('footer-date').innerText = data.footerDate || '';
 document.getElementById('company-name').innerText = data.company || '';
 document.getElementById('report-main-title').innerText = data.mainTitle || '安全作業標準程序書';
 document.getElementById('document-code').innerText = data.documentCode || '';
@@ -2502,15 +2578,7 @@ async function importDB(event) {
 
                 updateReportsDropdown();
 
-                if (previewStandards.length > 0) {
-                    const firstReport = previewStandards[0];
-
-                    if (firstReport.isExternalFile) {
-                        renderExternalFile(firstReport);
-                    } else {
-                        renderReport(firstReport);
-                    }
-                }
+resetReportToBlank(true);
 
                 updateDataActionButtons();
                 initIcons();
