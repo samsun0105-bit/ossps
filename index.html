@@ -858,6 +858,86 @@ main {
 
 }
 
+/* =========================================================
+   手機版管理者／使用者：
+   防止 Safari 點擊輸入或可編輯欄位時自動放大
+========================================================= */
+@media screen and (max-width: 768px),
+       screen and (orientation: landscape)
+       and (max-height: 520px)
+       and (max-width: 950px) {
+
+    /*
+     * 左側功能列的文字輸入框及下拉選單。
+     * Safari 的表單欄位實際字級至少要有 16px。
+     */
+    #search-input,
+    #category-select,
+    #reports-dropdown {
+        font-size: 16px !important;
+        line-height: 1.25 !important;
+
+        -webkit-text-size-adjust: 100% !important;
+        text-size-adjust: 100% !important;
+    }
+
+    /*
+     * 權限登入及權限與密碼設定視窗。
+     * 登入密碼原本已接近 16px，
+     * 這裡統一固定為 16px。
+     */
+    #login-modal input,
+    #password-modal input[type="password"] {
+        font-size: 16px !important;
+        line-height: 1.25 !important;
+
+        -webkit-text-size-adjust: 100% !important;
+        text-size-adjust: 100% !important;
+    }
+
+    /*
+     * 程序書上方基本資料：
+     * 作業種類、作業方法、作業名稱、
+     * 使用器具、防護具。
+     */
+    #field-type.admin-edit-mode,
+    #field-method.admin-edit-mode,
+    #field-name.admin-edit-mode,
+    #field-tools.admin-edit-mode,
+    #field-protective.admin-edit-mode {
+        font-size: 16px !important;
+        line-height: 1.45 !important;
+
+        -webkit-text-size-adjust: 100% !important;
+        text-size-adjust: 100% !important;
+    }
+
+    /*
+     * 工作步驟表格內所有編輯欄位。
+     */
+    #steps-body td[contenteditable="true"] {
+        font-size: 16px !important;
+        line-height: 1.5 !important;
+
+        -webkit-text-size-adjust: 100% !important;
+        text-size-adjust: 100% !important;
+    }
+
+    /*
+     * 文件編號及底部欄位。
+     */
+    #document-code.admin-edit-mode,
+    #footer-dept.admin-edit-mode,
+    #footer-author.admin-edit-mode,
+    #footer-date.admin-edit-mode {
+        font-size: 16px !important;
+        line-height: 1.4 !important;
+
+        -webkit-text-size-adjust: 100% !important;
+        text-size-adjust: 100% !important;
+    }
+}
+
     </style>
 </head>
 <body>
@@ -1376,9 +1456,29 @@ function isPreviewDataActive() {
 }
 
 function getDisplayCategories() {
-    if (isPreviewDataActive() && Array.isArray(previewCategories)) {
+    /*
+     * 預覽資料已載入：
+     * 顯示暫存的預覽分類。
+     */
+    if (
+        isPreviewDataActive() &&
+        Array.isArray(previewCategories)
+    ) {
         return previewCategories;
     }
+
+    /*
+     * 預覽者尚未載入預覽資料：
+     * 不顯示 IndexedDB 內的正式分類。
+     */
+    if (!canEditData()) {
+        return [];
+    }
+
+    /*
+     * 使用者／管理者：
+     * 顯示正式分類。
+     */
     return categories;
 }
 
@@ -1417,13 +1517,41 @@ exportBtn.removeAttribute('title');
                 <span class="download">載入資料</span>
             `;
             importBtn.title = "載入正式資料，會覆蓋目前紀錄";
-        } else {
-            importBtn.innerHTML = `
-                <i data-lucide="file-search" class="w-3.5 h-3.5"></i>
-                <span class="download">載入預覽</span>
-            `;
-            importBtn.title = "只載入預覽，不會寫入正式資料庫";
-        }
+} else if (isPreviewDataActive()) {
+
+    /*
+     * 預覽資料已載入：
+     * 同一顆按鈕切換成退出預覽。
+     */
+    importBtn.innerHTML = `
+        <i data-lucide="eye-off"
+           class="w-3.5 h-3.5"></i>
+
+        <span class="download">
+            退出預覽
+        </span>
+    `;
+
+    importBtn.title =
+        "清除目前暫存的預覽資料並回到空白檢視模式";
+
+} else {
+
+    /*
+     * 預覽者尚未載入資料。
+     */
+    importBtn.innerHTML = `
+        <i data-lucide="file-search"
+           class="w-3.5 h-3.5"></i>
+
+        <span class="download">
+            載入預覽
+        </span>
+    `;
+
+    importBtn.title =
+        "只載入預覽，不會寫入正式資料庫";
+}
     }
 
     initIcons();
@@ -1520,24 +1648,188 @@ exportBtn.removeAttribute('title');
             tx.objectStore('settings').put({ key: 'categories', value: categories });
         }
 
-        function renderCategories() {
-            const select = document.getElementById('category-select');
-            const currentValue = select.value;
-            const displayCategories = getDisplayCategories();
+function renderCategories() {
+    const select =
+        document.getElementById('category-select');
 
-            select.innerHTML = '';
+    if (!select) return;
 
-            displayCategories.forEach(cat => {
-                const opt = document.createElement('option');
-                opt.value = cat;
-                opt.textContent = cat;
-                select.appendChild(opt);
-            });
+    const currentValue = select.value;
+    const displayCategories =
+        getDisplayCategories();
 
-            if (displayCategories.includes(currentValue)) {
-                select.value = currentValue;
-            }
+    select.innerHTML = '';
+
+    /*
+     * 預覽者尚未載入資料時，
+     * 不顯示先前正式資料庫中的分類。
+     */
+    if (displayCategories.length === 0) {
+        const option =
+            document.createElement('option');
+
+        option.value = '';
+        option.textContent =
+            '-- 請先載入預覽資料 --';
+
+        select.appendChild(option);
+        select.value = '';
+
+        return;
+    }
+
+    displayCategories.forEach(category => {
+        const option =
+            document.createElement('option');
+
+        option.value = category;
+        option.textContent = category;
+
+        select.appendChild(option);
+    });
+
+    if (
+        currentValue &&
+        displayCategories.includes(currentValue)
+    ) {
+        select.value = currentValue;
+    } else {
+        select.value = displayCategories[0];
+    }
+}
+
+/* =========================================================
+   清除目前程序書畫面，回到空白初始狀態
+========================================================= */
+function clearReportDisplayToBlank() {
+    currentLoadedReportId = null;
+    isReportEditMode = false;
+
+    /*
+     * 清除外部 PDF／Word 預覽，
+     * 同時釋放 iframe 內的舊檔案內容。
+     */
+    const fileOverlay =
+        document.getElementById(
+            'file-preview-overlay'
+        );
+
+    const reportWrapper =
+        document.getElementById(
+            'report-content-wrapper'
+        );
+
+    const fileViewer =
+        document.getElementById(
+            'file-viewer'
+        );
+
+    const wordDownloadLink =
+        document.getElementById(
+            'download-word-link'
+        );
+
+    if (fileOverlay) {
+        fileOverlay.style.display = 'none';
+    }
+
+    if (reportWrapper) {
+        reportWrapper.style.display = 'block';
+    }
+
+    if (fileViewer) {
+        fileViewer.src = 'about:blank';
+    }
+
+    if (wordDownloadLink) {
+        wordDownloadLink.onclick = null;
+    }
+
+    renderReport({
+        company: '',
+        mainTitle: '安全作業標準程序書',
+        documentCode: '',
+        type: '--',
+        method: '--',
+        name: '--',
+        tools: '--',
+        protective: '--',
+        footerDept: '',
+        footerAuthor: '',
+        footerDate: '',
+        steps: []
+    });
+
+    setCurrentDate();
+    updateSaveBtnText();
+}
+
+
+/* =========================================================
+   清除預覽者目前工作資料
+   不會清除 IndexedDB 正式資料
+========================================================= */
+function clearViewerWorkingData() {
+    previewCategories = null;
+    previewStandards = null;
+
+    clearReportDisplayToBlank();
+
+    renderCategories();
+    updateReportsDropdown();
+    updateDataActionButtons();
+
+    initIcons();
+}
+
+
+/* =========================================================
+   預覽者主動退出預覽
+   文案比照證照管理系統
+========================================================= */
+function exitPreviewMode() {
+    if (!isPreviewDataActive()) return;
+
+    const confirmed = confirm(
+        '確定要退出預覽嗎？\n\n' +
+        '目前載入的預覽資料將被清除，' +
+        '但不會影響系統正式資料。'
+    );
+
+    if (!confirmed) return;
+
+    clearViewerWorkingData();
+    toggleMobileSidebar(false);
+
+    alert(
+        '已退出預覽，暫存的預覽資料已清除。'
+    );
+}
+
+
+/* =========================================================
+   開啟權限登入
+   預覽資料存在時，先詢問是否退出預覽
+========================================================= */
+function openLoginModal() {
+    /*
+     * 文案比照證照管理系統。
+     */
+    if (isPreviewDataActive()) {
+        const confirmed = confirm(
+            '登入前將先退出預覽並清除目前預覽資料，是否繼續？'
+        );
+
+        if (!confirmed) {
+            return;
         }
+
+        clearViewerWorkingData();
+    }
+
+    toggleMobileSidebar(false);
+    toggleModal('login-modal', true);
+}
 
         // 拖放功能設置
         function setupDragAndDrop() {
@@ -1866,41 +2158,49 @@ return;
         }
 
 function resetReportToBlank(silent = false) {
-    if (!hasCurrentReportContent()) {
-        if (!silent) showToast("目前已是空白頁面。");
+    const fileOverlay =
+        document.getElementById(
+            'file-preview-overlay'
+        );
+
+    const hasExternalFile =
+        fileOverlay &&
+        fileOverlay.style.display === 'block';
+
+    const hasContent =
+        hasCurrentReportContent() ||
+        hasExternalFile;
+
+    if (!hasContent) {
+        if (!silent) {
+            showToast(
+                "目前已是空白頁面。"
+            );
+        }
+
         return;
     }
 
-    if (!confirm("確定要清除目前程序書內容，回到空白頁面嗎？")) {
+    /*
+     * silent=true 時為系統內部清除，
+     * 不再顯示確認視窗。
+     */
+    if (
+        !silent &&
+        !confirm(
+            "確定要清除目前程序書內容，回到空白頁面嗎？"
+        )
+    ) {
         return;
     }
 
-    currentLoadedReportId = null;
-    isReportEditMode = false;
+    clearReportDisplayToBlank();
 
-    document.getElementById('file-preview-overlay').style.display = 'none';
-    document.getElementById('report-content-wrapper').style.display = 'block';
-
-    renderReport({
-        company: '',
-        mainTitle: '安全作業標準程序書',
-        documentCode: '',
-        type: '--',
-        method: '--',
-        name: '--',
-        tools: '--',
-        protective: '--',
-        footerDept: '',
-        footerAuthor: '',
-        footerDate: '',
-        steps: []
-    });
-
-    setCurrentDate();
-    updateSaveBtnText();
-    applyReportEditModeUI();
-    updateMobilePreviewScale();
-    showToast("已回到原始畫面。");
+    if (!silent) {
+        showToast(
+            "已回到原始畫面。"
+        );
+    }
 }
 
 function hasCurrentReportContent() {
@@ -1988,11 +2288,20 @@ function toggleReportEditMode() {
     showToast(isReportEditMode ? "已進入編輯模式" : "已切換為檢視狀態");
 }
 
-        function toggleAdmin(status) {
-            if (!status) {
-                isAdmin = false;
-                isEditor = false;
-            }
+function toggleAdmin(status) {
+    if (!status) {
+        isAdmin = false;
+        isEditor = false;
+
+        /*
+         * 退出管理者／使用者模式後，
+         * 回到完全空白的預覽者畫面。
+         */
+        previewCategories = null;
+        previewStandards = null;
+
+        clearReportDisplayToBlank();
+    }
 
             const canEdit = canEditData();
             const canDelete = canDeleteData();
@@ -2039,7 +2348,7 @@ if (reportSelectRow) {
                     `;
                 } else {
                     loginTriggerText.innerText = "權限登入";
-                    loginTrigger.onclick = () => toggleModal('login-modal', true);
+                    loginTrigger.onclick = openLoginModal;
                     loginTrigger.classList.remove('text-amber-300', 'text-emerald-300');
                     loginTrigger.classList.add('text-slate-400');
 
@@ -2243,11 +2552,42 @@ updateMobilePreviewScale();
 
         }
 
-        async function updateReportsDropdown() {
-            const category = document.getElementById('category-select').value;
-            const dropdown = document.getElementById('reports-dropdown');
+async function updateReportsDropdown() {
+    const categorySelect =
+        document.getElementById(
+            'category-select'
+        );
 
-            dropdown.innerHTML = '<option value="">載入中...</option>';
+    const dropdown =
+        document.getElementById(
+            'reports-dropdown'
+        );
+
+    if (!dropdown) return;
+
+    const category =
+        categorySelect
+            ? categorySelect.value
+            : '';
+
+    /*
+     * 預覽者尚未載入預覽資料：
+     * 不讀取 IndexedDB 正式程序書。
+     */
+    if (
+        !canEditData() &&
+        !isPreviewDataActive()
+    ) {
+        dropdown.innerHTML =
+            '<option value="">' +
+            '-- 請先載入預覽資料 --' +
+            '</option>';
+
+        return;
+    }
+
+    dropdown.innerHTML =
+        '<option value="">載入中...</option>';
 
             if (isPreviewDataActive()) {
                 const filtered = previewStandards.filter(item => item.category === category);
@@ -2441,7 +2781,27 @@ tx.oncomplete = () => {
         }
 
 function triggerImportDB() {
-    document.getElementById('import-file').click();
+    /*
+     * 預覽者已載入預覽資料時，
+     * 同一顆按鈕改為退出預覽。
+     */
+    if (isPreviewDataActive()) {
+        exitPreviewMode();
+        return;
+    }
+
+    /*
+     * 管理者、使用者或尚未載入預覽的預覽者，
+     * 維持原本選擇 JSON 檔案流程。
+     */
+    const input =
+        document.getElementById(
+            'import-file'
+        );
+
+    if (input) {
+        input.click();
+    }
 }
 
 function getAllFromStore(storeName) {
@@ -2576,11 +2936,15 @@ async function importDB(event) {
                     document.getElementById('category-select').value = previewCategories[0];
                 }
 
-                updateReportsDropdown();
+updateReportsDropdown();
 
-resetReportToBlank(true);
+/*
+ * 預覽資料載入後，
+ * 先清除畫面上先前顯示的程序書。
+ */
+clearReportDisplayToBlank();
 
-                updateDataActionButtons();
+updateDataActionButtons();
                 initIcons();
 
                 alert("預覽資料載入成功！");
@@ -2829,13 +3193,24 @@ function updateMobilePreviewScale() {
         }
 
         document.getElementById('ai-generate-btn').onclick = generateAIReport;
-        document.getElementById('login-trigger').onclick = () => {
-            if (canEditData()) {
-                toggleAdmin(false);
-            } else {
-                toggleModal('login-modal', true);
-            }
-        };
+document.getElementById(
+    'login-trigger'
+).onclick = () => {
+
+    if (canEditData()) {
+        /*
+         * 管理者／使用者登出。
+         */
+        toggleAdmin(false);
+
+    } else {
+        /*
+         * 預覽者登入。
+         * 預覽資料存在時先顯示確認通知。
+         */
+        openLoginModal();
+    }
+};
         document.getElementById('save-report-btn').onclick = saveReport;
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
