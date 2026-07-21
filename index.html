@@ -2332,32 +2332,86 @@ if (reportSelectRow) {
             const loginTriggerText = document.getElementById('login-trigger-text');
             const loginTriggerIcon = document.getElementById('login-trigger-icon');
 
-            if (loginTrigger && loginTriggerText && loginTriggerIcon) {
-                if (canEdit) {
-                    loginTriggerText.innerText = "登出系統";
-                    loginTrigger.onclick = () => toggleAdmin(false);
-                    loginTrigger.classList.remove('text-slate-400');
-                    loginTrigger.classList.toggle('text-amber-300', isAdmin);
-                    loginTrigger.classList.toggle('text-emerald-300', isEditor && !isAdmin);
+if (
+    loginTrigger &&
+    loginTriggerText &&
+    loginTriggerIcon
+) {
+    if (canEdit) {
+        /*
+         * 管理者／使用者登入後：
+         * 文字、圖示與點擊事件全部切換成登出狀態。
+         */
+        loginTriggerText.innerText =
+            "登出系統";
 
-                    loginTriggerIcon.innerHTML = `
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M17 16l4-4m0 0l-4-4m4 4H9"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M13 5H6a2 2 0 00-2 2v10a2 2 0 002 2h7"></path>
-                    `;
-                } else {
-                    loginTriggerText.innerText = "權限登入";
-                    loginTrigger.onclick = openLoginModal;
-                    loginTrigger.classList.remove('text-amber-300', 'text-emerald-300');
-                    loginTrigger.classList.add('text-slate-400');
+        /*
+         * 只保留這一個事件。
+         * 不可再於下方設定 toggleAdmin(false)，
+         * 否則會覆蓋確認與完成通知流程。
+         */
+        loginTrigger.onclick =
+            logoutSystem;
 
-                    loginTriggerIcon.innerHTML = `
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                    `;
-                }
-            }
+        loginTrigger.classList.remove(
+            'text-slate-400'
+        );
+
+        loginTrigger.classList.toggle(
+            'text-amber-300',
+            isAdmin
+        );
+
+        loginTrigger.classList.toggle(
+            'text-emerald-300',
+            isEditor && !isAdmin
+        );
+
+        loginTriggerIcon.innerHTML = `
+            <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H9">
+            </path>
+
+            <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 5H6a2 2 0 00-2 2v10a2 2 0 002 2h7">
+            </path>
+        `;
+    } else {
+        /*
+         * 預覽者模式：
+         * 恢復權限登入文字、圖示與登入事件。
+         */
+        loginTriggerText.innerText =
+            "權限登入";
+
+        loginTrigger.onclick =
+            openLoginModal;
+
+        loginTrigger.classList.remove(
+            'text-amber-300',
+            'text-emerald-300'
+        );
+
+        loginTrigger.classList.add(
+            'text-slate-400'
+        );
+
+        loginTriggerIcon.innerHTML = `
+            <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+            </path>
+        `;
+    }
+}
 
 const permissionSettingsBtn = document.getElementById('permission-settings-btn');
 if (permissionSettingsBtn) {
@@ -3192,24 +3246,73 @@ function updateMobilePreviewScale() {
             setTimeout(() => t.classList.add('translate-y-20', 'opacity-0'), 3000);
         }
 
+/* =========================================================
+   管理者／使用者登出
+   確認後回到預覽者模式，完成訊息顯示於右下角
+========================================================= */
+function logoutSystem() {
+    /*
+     * 預覽者狀態不需要執行登出。
+     */
+    if (!canEditData()) {
+        return;
+    }
+
+    /*
+     * 登出前只保留一次確認。
+     */
+    const confirmed = confirm(
+        "確定要登出目前模式嗎？"
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    /*
+     * 清除管理者／使用者權限，
+     * 並執行既有的登出畫面更新流程。
+     */
+    toggleAdmin(false);
+
+    /*
+     * 手機版若左側功能欄仍開啟，
+     * 登出後一併收合。
+     */
+    if (
+        typeof toggleMobileSidebar ===
+        "function"
+    ) {
+        toggleMobileSidebar(false);
+    }
+
+    /*
+     * 完成通知不阻擋操作，
+     * 約 3 秒後自動消失。
+     */
+    showToast(
+        "已完成登出。"
+    );
+}
+
         document.getElementById('ai-generate-btn').onclick = generateAIReport;
 document.getElementById(
     'login-trigger'
 ).onclick = () => {
-
+    /*
+     * 管理者或使用者：
+     * 執行含確認及右下角通知的登出流程。
+     */
     if (canEditData()) {
-        /*
-         * 管理者／使用者登出。
-         */
-        toggleAdmin(false);
-
-    } else {
-        /*
-         * 預覽者登入。
-         * 預覽資料存在時先顯示確認通知。
-         */
-        openLoginModal();
+        logoutSystem();
+        return;
     }
+
+    /*
+     * 預覽者：
+     * 使用既有的權限登入流程。
+     */
+    openLoginModal();
 };
         document.getElementById('save-report-btn').onclick = saveReport;
 document.addEventListener('keydown', function(event) {
